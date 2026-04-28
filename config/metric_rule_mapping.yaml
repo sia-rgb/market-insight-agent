@@ -1,0 +1,102 @@
+metric_rule_mapping:
+  - sheet: 权益-全球股指
+    metric_name: 最近一周
+    monitor_change_field: pct_change_pct
+    rules: [pct_change_abs_ge_metric_p95, abs_weekly_pct_ge_5_fallback, robust_z_abs_ge_3, global_top_movers_10, class_top_movers_3, hist_percentile_ge_95, peer_percentile_ge_95]
+    include_in_anomaly: true
+
+  - sheet: 权益-全球股指
+    metric_name: [最新收盘价, 最近1月, 2026年至今, 2025年全年]
+    monitor_change_field: null
+    rules: []
+    include_in_anomaly: false
+
+  - sheet: 权益-A股交易量
+    metric_name: A股总成交额（亿元）
+    monitor_change_field: abs_change
+    rules: [amount_abs_change_ge_rolling_p90, robust_z_abs_ge_3, global_top_movers_10, class_top_movers_3, hist_percentile_ge_95, peer_percentile_ge_95]
+    include_in_anomaly: true
+
+  - sheet: 权益-南北向
+    metric_name: 南向-成交净买入(亿元,港元)
+    monitor_change_field: abs_change
+    rules: [amount_abs_change_ge_rolling_p90, robust_z_abs_ge_3, global_top_movers_10, class_top_movers_3, hist_percentile_ge_95, peer_percentile_ge_95]
+    include_in_anomaly: true
+
+  - sheet: 权益-两融余额
+    metric_name: [融资余额, 融券余额, 融资融券余额(沪深两市)]
+    monitor_change_field: abs_change
+    rules: [amount_abs_change_ge_rolling_p90, robust_z_abs_ge_3, global_top_movers_10, class_top_movers_3, hist_percentile_ge_95, peer_percentile_ge_95]
+    include_in_anomaly: true
+
+  - sheet: 权益-两融余额
+    metric_name: 两融余额占A股流通市值(%)
+    monitor_change_field: abs_change
+    rules: [ratio_abs_change_ge_metric_p95, ratio_pp_change_ge_0_2_fallback, robust_z_abs_ge_3, global_top_movers_10, class_top_movers_3, hist_percentile_ge_95, peer_percentile_ge_95]
+    include_in_anomaly: true
+
+  - sheet: 权益-VIX
+    metric_name: close
+    monitor_change_field: pct_change_pct
+    rules: [pct_change_abs_ge_metric_p95, abs_weekly_pct_ge_5_fallback, robust_z_abs_ge_3, global_top_movers_10, class_top_movers_3, hist_percentile_ge_95, peer_percentile_ge_95]
+    include_in_anomaly: true
+
+  - sheet: 权益-散户情绪资金流向
+    metric_name: [largeBillInflowMoney, middleBillInflowMoney, smallBillInflowMoney, 散户交易金额]
+    monitor_change_field: abs_change
+    rules: [amount_abs_change_ge_rolling_p90, robust_z_abs_ge_3, global_top_movers_10, class_top_movers_3, hist_percentile_ge_95, peer_percentile_ge_95]
+    include_in_anomaly: true
+
+  - sheet: 固收-债券指数
+    metric_name: close
+    monitor_change_field: pct_change_pct
+    rules: [pct_change_abs_ge_metric_p95, abs_weekly_pct_ge_5_fallback, robust_z_abs_ge_3, global_top_movers_10, class_top_movers_3, hist_percentile_ge_95, peer_percentile_ge_95]
+    include_in_anomaly: true
+
+  - sheet: 固收-债券收益率
+    metric_name: EDBclose
+    monitor_change_field: abs_change
+    rules: [fi_weekly_bp_ge_20, robust_z_abs_ge_3, global_top_movers_10, class_top_movers_3, hist_percentile_ge_95, peer_percentile_ge_95]
+    include_in_anomaly: true
+
+  - sheet: 固收-DR001收盘价
+    metric_name: close
+    monitor_change_field: abs_change
+    rules: [fi_weekly_bp_ge_20, robust_z_abs_ge_3, global_top_movers_10, class_top_movers_3, hist_percentile_ge_95, peer_percentile_ge_95]
+    include_in_anomaly: true
+
+  - sheet: 固收-同业拆借利率
+    metric_name: close
+    monitor_change_field: abs_change
+    rules: [fi_weekly_bp_ge_20, robust_z_abs_ge_3, global_top_movers_10, class_top_movers_3, hist_percentile_ge_95, peer_percentile_ge_95]
+    include_in_anomaly: true
+
+  - sheet: 外汇-美元指数&人民币汇率
+    metric_name: [close（美元指数）, close（美元中间价）]
+    monitor_change_field: pct_change_pct
+    rules: [pct_change_abs_ge_metric_p95, abs_weekly_pct_ge_5_fallback, robust_z_abs_ge_3, global_top_movers_10, class_top_movers_3, hist_percentile_ge_95, peer_percentile_ge_95]
+    include_in_anomaly: true
+
+  - sheet: 大宗商品-石油价格
+    metric_name: EDBclose
+    monitor_change_field: pct_change_pct
+    rules: [pct_change_abs_ge_metric_p95, abs_weekly_pct_ge_5_fallback, robust_z_abs_ge_3, global_top_movers_10, class_top_movers_3, hist_percentile_ge_95, peer_percentile_ge_95]
+    include_in_anomaly: true
+
+  - sheet: 大宗商品-黄金价格
+    metric_name: EDBclose
+    monitor_change_field: pct_change_pct
+    rules: [pct_change_abs_ge_metric_p95, abs_weekly_pct_ge_5_fallback, robust_z_abs_ge_3, global_top_movers_10, class_top_movers_3, hist_percentile_ge_95, peer_percentile_ge_95]
+    include_in_anomaly: true
+
+  - sheet: 衍生品-50ETF期权
+    metric_name: [daily_volume, daily_call_volume, daily_put_volume, daily_position, daily_call_position, daily_put_position]
+    monitor_change_field: abs_change
+    rules: [amount_abs_change_ge_rolling_p90, robust_z_abs_ge_3, global_top_movers_10, class_top_movers_3, hist_percentile_ge_95, peer_percentile_ge_95]
+    include_in_anomaly: true
+
+  - sheet: 衍生品-50ETF期权
+    metric_name: daily_contract_rate
+    monitor_change_field: pct_change_pct
+    rules: [pct_change_abs_ge_metric_p95, abs_weekly_pct_ge_5_fallback, robust_z_abs_ge_3, global_top_movers_10, class_top_movers_3, hist_percentile_ge_95, peer_percentile_ge_95]
+    include_in_anomaly: true

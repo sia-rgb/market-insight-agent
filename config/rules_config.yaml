@@ -1,0 +1,181 @@
+monitor_change_binding:
+  metric_to_field: {}
+  unit_to_field:
+    "%": abs_change
+  keyword_to_field:
+    - keyword: 成交额
+      field: abs_change
+    - keyword: 净买入
+      field: abs_change
+    - keyword: 余额
+      field: abs_change
+    - keyword: volume
+      field: abs_change
+    - keyword: position
+      field: abs_change
+    - keyword: Money
+      field: abs_change
+    - keyword: amount
+      field: abs_change
+    - keyword: daily_
+      field: abs_change
+  default_field: pct_change_pct
+
+invalid_guard:
+  calc_status_required: ok
+  min_data_coverage_ratio: 0.8
+  required_fields:
+    - asset_name
+    - metric_name
+    - monitor_change_field
+
+metric_groups:
+  amount_keywords:
+    - 成交额
+    - 净买入
+    - 余额
+    - volume
+    - position
+    - Money
+    - amount
+    - daily_
+  ratio_keywords:
+    - 占
+    - 比
+    - ratio
+    - rate
+    - contract_rate
+    - "%"
+
+stats:
+  rolling_window_weeks: 52
+  rolling_min_periods: 8
+  threshold_history_min_weeks: 26
+  peer_min_count: 8
+
+rules:
+  - rule_id: pct_change_abs_ge_metric_p95
+    enabled: true
+    rule_type: threshold
+    monitor_change_field: pct_change_pct
+    threshold_field: metric_rolling_52w_abs_p95
+    comparison: abs_ge_field
+    min_history_weeks: 26
+    label_up: metric_scaled_large_gain
+    label_down: metric_scaled_large_drop
+
+  - rule_id: abs_weekly_pct_ge_5_fallback
+    enabled: true
+    rule_type: threshold
+    monitor_change_field: pct_change_pct
+    comparison: abs_ge_value
+    threshold_value: 5.0
+    only_when_history_lt_weeks: 26
+    label_up: large_weekly_gain_fallback
+    label_down: large_weekly_drop_fallback
+
+  - rule_id: fi_weekly_bp_ge_20
+    enabled: true
+    rule_type: threshold
+    comparison: abs_ge_value
+    threshold_value: 0.20
+    field: abs_change
+    asset_class_equals: fixed_income
+    unit_equals: "%"
+    label_up: large_yield_rise
+    label_down: large_yield_fall
+
+  - rule_id: amount_abs_change_ge_rolling_p90
+    enabled: true
+    rule_type: threshold
+    monitor_change_field: abs_change
+    comparison: abs_ge_field
+    threshold_field: rolling_52w_abs_change_p90
+    metric_group: amount_keywords
+    label_up: large_weekly_amount_shift
+    label_down: large_weekly_amount_shift
+
+  - rule_id: ratio_abs_change_ge_metric_p95
+    enabled: true
+    rule_type: threshold
+    monitor_change_field: abs_change
+    comparison: abs_ge_field
+    threshold_field: metric_rolling_52w_abs_p95
+    unit_equals: "%"
+    metric_group: ratio_keywords
+    exclude_asset_class:
+      - fixed_income
+    min_history_weeks: 26
+    label_up: metric_scaled_ratio_shift
+    label_down: metric_scaled_ratio_shift
+
+  - rule_id: ratio_pp_change_ge_0_2_fallback
+    enabled: true
+    rule_type: threshold
+    monitor_change_field: abs_change
+    comparison: abs_ge_value
+    threshold_value: 0.20
+    unit_equals: "%"
+    metric_group: ratio_keywords
+    exclude_asset_class:
+      - fixed_income
+    only_when_history_lt_weeks: 26
+    label_up: large_ratio_shift_fallback
+    label_down: large_ratio_shift_fallback
+
+  - rule_id: robust_z_abs_ge_3
+    enabled: true
+    rule_type: historical_comparison
+    comparison: abs_ge_value
+    field: robust_z_score
+    threshold_value: 3.0
+    min_history_weeks: 26
+    label_up: robust_distribution_outlier
+    label_down: robust_distribution_outlier
+
+  - rule_id: global_top_movers_10
+    enabled: true
+    rule_type: ranking
+    rank_scope:
+      - week_start
+    top_n: 10
+    label_up: top_mover_global
+    label_down: top_mover_global
+
+  - rule_id: class_top_movers_3
+    enabled: true
+    rule_type: ranking
+    rank_scope:
+      - week_start
+      - asset_class
+    top_n: 3
+    label_up: top_mover_in_class
+    label_down: top_mover_in_class
+
+  - rule_id: hist_percentile_ge_95
+    enabled: true
+    rule_type: historical_comparison
+    comparison: ge_value
+    field: hist_percentile
+    threshold_value: 0.95
+    min_history_weeks: 26
+    label_up: historically_extreme_move
+    label_down: historically_extreme_move
+
+  - rule_id: peer_percentile_ge_95
+    enabled: true
+    rule_type: peer_comparison
+    comparison: ge_value
+    field: peer_percentile
+    threshold_value: 0.95
+    min_peer_count: 8
+    label_up: peer_extreme_move
+    label_down: peer_extreme_move
+
+severity:
+  weights:
+    adaptive_threshold_score: 0.35
+    robust_z_score_norm: 0.25
+    peer_score: 0.20
+    ranking_score: 0.10
+    hist_score: 0.10

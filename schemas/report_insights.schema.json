@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "report_insights.schema.json",
+  "title": "report_insights",
+  "type": "object",
+  "required": [
+    "run_id",
+    "week_start",
+    "top_abnormal_assets",
+    "key_asset_cards",
+    "market_summary_paragraph",
+    "insight_status"
+  ],
+  "properties": {
+    "run_id": {"type": "string", "minLength": 1},
+    "week_start": {"type": "string", "minLength": 1},
+    "top_abnormal_assets": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/top_abnormal_asset"}
+    },
+    "key_asset_cards": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/key_asset_card"}
+    },
+    "market_summary_paragraph": {"type": "string"},
+    "insight_status": {
+      "type": "string",
+      "enum": ["ok", "insufficient_data"]
+    },
+    "external_context_used": {"type": "boolean"},
+    "external_references": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/external_reference"}
+    },
+    "search_query_log": {
+      "type": "array",
+      "items": {"type": "object"}
+    },
+    "weekly_report_draft": {"type": "string"}
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "top_abnormal_asset": {
+      "type": "object",
+      "required": ["asset_name", "metric_name"],
+      "properties": {
+        "asset_name": {"type": "string"},
+        "metric_name": {"type": "string"},
+        "asset_class": {"type": "string"},
+        "asset_key": {"type": "string"},
+        "series_key": {"type": "string"},
+        "card_id": {"type": "string"},
+        "source_sheet": {"type": "string"},
+        "pct_change_pct": {"type": ["number", "integer", "null"]},
+        "abs_change": {"type": ["number", "integer", "null"]},
+        "monitor_change_field": {"type": "string", "enum": ["pct_change_pct", "abs_change"]},
+        "monitor_change_value": {"type": ["number", "integer", "null"]},
+        "direction": {"type": "string"},
+        "unit": {"type": "string"},
+        "severity_score": {"type": ["number", "integer", "null"]},
+        "anomaly_rule_id": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "key_asset_card": {
+      "type": "object",
+      "required": [
+        "asset_name",
+        "metric_name"
+      ],
+      "properties": {
+        "asset_name": {"type": "string"},
+        "asset_class": {"type": "string"},
+        "asset_key": {"type": "string"},
+        "series_key": {"type": "string"},
+        "card_id": {"type": "string"},
+        "source_sheet": {"type": "string"},
+        "metric_name": {"type": "string"},
+        "card_text": {"type": "string"},
+        "possible_drivers": {"type": "string"},
+        "direction_summary": {"type": "string"},
+        "magnitude_summary": {"type": "string"},
+        "driver_analysis": {"type": "string"},
+        "rule_ids": {"type": "array", "items": {"type": "string"}},
+        "evidence_summary": {"type": "string"},
+        "source_refs": {"type": "array", "items": {"type": "string"}},
+        "external_context_used": {"type": "boolean"},
+        "driver_note": {"type": "string"},
+        "external_references": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/external_reference"}
+        },
+        "driver_evidence": {"type": "array", "items": {"type": "object"}}
+      },
+      "additionalProperties": true
+    },
+    "external_reference": {
+      "type": "object",
+      "properties": {
+        "source_url": {"type": "string"},
+        "source_title": {"type": "string"},
+        "publish_date": {"type": "string"},
+        "retrieved_at": {"type": "string"},
+        "relevance_note": {"type": "string"}
+      },
+      "additionalProperties": true
+    }
+  }
+}

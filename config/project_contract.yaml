@@ -1,0 +1,117 @@
+version: 1
+
+project_scope:
+  mode: weekly_monitoring_report
+  in_scope:
+    - read_and_standardize_market_xlsx
+    - calculate_weekly_changes
+    - detect_anomaly_assets
+    - generate_structured_weekly_report
+  out_of_scope:
+    - intraday_monitoring
+    - forecasting_model
+    - strategy_backtest
+    - causal_inference_automation
+    - trading_execution
+    - unconfirmed_cross_source_join_or_conversion
+  week_definition:
+    type: natural_week
+    week_start: Monday
+    week_end: Sunday
+    date_assignment: assign_by_natural_week
+  asset_classes:
+    - equity
+    - fixed_income
+    - fx
+    - commodity
+    - derivative
+
+monitoring_metric_policy:
+  anomaly_grain:
+    - sheet
+    - metric_name
+  executable_mapping: config/metric_rule_mapping.yaml
+  context_metric_allowed: true
+  fact_integrity:
+    report_layer_may_aggregate: true
+    report_layer_must_not_rewrite_rule_facts: true
+
+standardized_market_data:
+  required_columns:
+    - date
+    - week_start
+    - week_end
+    - asset_class
+    - asset_name
+    - asset_key
+    - series_key
+    - metric_name
+    - value
+    - unit
+    - source_file
+    - source_sheet
+    - is_valid
+    - validation_code
+    - validation_note
+  optional_columns:
+    - ticker
+    - source_asset_name
+    - source_metric_name
+    - value_raw
+    - unit_raw
+
+ingest_runtime_assumptions:
+  header_scan_max_rows: 30
+  block_split: repeated_time_field_column
+  data_start_offset_rows: 2
+  ticker_detection: high_non_numeric_ratio
+  source_file: actual_input_filename
+
+agent_judgment_contract:
+  input:
+    - anomaly_candidates
+  ranking:
+    sort_by: severity_score
+    order: desc
+    exclude_when_missing:
+      - severity_score
+  explanation_requirements:
+    required_analysis_points:
+      - direction_summary
+      - magnitude_summary
+      - driver_analysis
+  degradation:
+    when_evidence_insufficient:
+      insight_status: insufficient_data
+      driver_analysis_text: 内部数据已显示该指标本周触发异常变动；后续重点观察相关政策、资金面、市场评论与同类资产表现是否同步变化
+
+reporting_contract:
+  input: report_insights
+  output: weekly_report.docx
+  structure:
+    - top_abnormal_asset_cards
+    - market_summary_paragraph
+  card_pairing:
+    primary:
+      - series_key
+      - card_id
+    fallback:
+      - asset_name
+      - metric_name
+      - source_sheet
+  display_fields:
+    - asset_name
+    - metric_name
+    - pct_change_pct
+    - abs_change
+    - direction_summary
+    - magnitude_summary
+    - driver_analysis
+    - external_references
+  forbidden:
+    - rewrite_card_text_semantics
+    - add_new_inference_in_report_render
+    - read_weekly_metrics_or_weekly_changes_for_backfill
+  degradation:
+    status_field: insight_status
+    insufficient_data_text: 内部数据已显示该指标本周触发异常变动；后续重点观察相关政策、资金面、市场评论与同类资产表现是否同步变化

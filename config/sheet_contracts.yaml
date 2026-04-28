@@ -1,0 +1,284 @@
+version: 2
+
+date_parse_defaults:
+  source_fields_priority: [date, Date, end_date, 截止日期, 截止日]
+  formats: ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d", "%m/%d/%Y", "%Y-%m-%d %H:%M:%S"]
+  allow_excel_serial: true
+  on_failure: invalid_date
+
+sheet_contracts:
+  - sheet: 权益-全球股指
+    status: ready
+    asset_class: equity
+    time_field: 截止日期
+    asset_field: [Code, Name]
+    value_fields: [最近一周, 最新收盘价, 最近1月, 2026年至今, 2025年全年]
+    unit_rules:
+      default_unit: raw
+      metric_units:
+        最近一周: "%"
+        最近1月: "%"
+        2026年至今: "%"
+        2025年全年: "%"
+      allowed_units: ["%", raw]
+    date_parse_rule:
+      source_fields_priority: [截止日期, Date, date]
+      formats: ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]
+      allow_excel_serial: true
+      on_failure: invalid_date
+    asset_key_rule:
+      type: prefer_columns
+      columns: [Code, Name]
+      fallback: sheet_name
+
+  - sheet: 权益-A股交易量
+    status: ready
+    asset_class: equity
+    time_field: Date
+    asset_field: A股市场
+    value_fields: [A股总成交额（亿元）]
+    unit_rules:
+      default_unit: 亿元
+      metric_units: {}
+      allowed_units: [亿元]
+    date_parse_rule:
+      source_fields_priority: [Date, date]
+      formats: ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]
+      allow_excel_serial: true
+      on_failure: invalid_date
+    asset_key_rule:
+      type: fixed
+      value: A股市场
+
+  - sheet: 权益-南北向
+    status: ready
+    asset_class: equity
+    time_field: date
+    asset_field: 南向
+    value_fields: [南向-成交净买入(亿元,港元)]
+    unit_rules:
+      default_unit: 亿元
+      metric_units: {}
+      allowed_units: [亿元, 港元]
+    date_parse_rule:
+      source_fields_priority: [date, Date]
+      formats: ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]
+      allow_excel_serial: true
+      on_failure: invalid_date
+    asset_key_rule:
+      type: fixed
+      value: 南向
+
+  - sheet: 权益-两融余额
+    status: ready
+    asset_class: equity
+    time_field: end_date
+    asset_field: A股两融
+    value_fields: [融资余额, 融券余额, 融资融券余额(沪深两市), 两融余额占A股流通市值(%)]
+    unit_rules:
+      default_unit: raw
+      metric_units:
+        两融余额占A股流通市值(%): "%"
+      allowed_units: [亿元, "%", raw]
+    date_parse_rule:
+      source_fields_priority: [end_date, 截止日, date]
+      formats: ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]
+      allow_excel_serial: true
+      on_failure: invalid_date
+    asset_key_rule:
+      type: fixed
+      value: A股两融
+
+  - sheet: 权益-VIX
+    status: ready
+    asset_class: equity
+    time_field: Date
+    asset_field: VIX.GI
+    value_fields: [close]
+    unit_rules:
+      default_unit: raw
+      metric_units: {}
+      allowed_units: [raw]
+    date_parse_rule:
+      source_fields_priority: [Date, date]
+      formats: ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]
+      allow_excel_serial: true
+      on_failure: invalid_date
+    asset_key_rule:
+      type: fixed
+      value: VIX.GI
+
+  - sheet: 权益-散户情绪资金流向
+    status: ready
+    asset_class: equity
+    time_field: date
+    asset_field: 沪深300
+    value_fields: [largeBillInflowMoney, middleBillInflowMoney, smallBillInflowMoney, 散户交易金额]
+    unit_rules:
+      default_unit: 亿元
+      metric_units: {}
+      allowed_units: [亿元]
+    date_parse_rule:
+      source_fields_priority: [date, Date]
+      formats: ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]
+      allow_excel_serial: true
+      on_failure: invalid_date
+    asset_key_rule:
+      type: fixed
+      value: 沪深300
+
+  - sheet: 固收-债券指数
+    status: ready
+    asset_class: fixed_income
+    time_field: Date
+    asset_field: ticker
+    value_fields: [close]
+    unit_rules:
+      default_unit: raw
+      metric_units: {}
+      allowed_units: [raw]
+    date_parse_rule:
+      source_fields_priority: [Date, date]
+      formats: ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]
+      allow_excel_serial: true
+      on_failure: invalid_date
+    asset_key_rule:
+      type: prefer_columns
+      columns: [ticker, Code, Name]
+      fallback: sheet_name
+
+  - sheet: 固收-债券收益率
+    status: ready
+    asset_class: fixed_income
+    time_field: Date
+    asset_field: [S0059749, G0000891]
+    value_fields: [EDBclose]
+    unit_rules:
+      default_unit: "%"
+      metric_units: {}
+      allowed_units: ["%"]
+    date_parse_rule:
+      source_fields_priority: [Date, date]
+      formats: ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]
+      allow_excel_serial: true
+      on_failure: invalid_date
+    asset_key_rule:
+      type: fixed
+      value: 债券收益率
+
+  - sheet: 固收-DR001收盘价
+    status: ready
+    asset_class: fixed_income
+    time_field: Date
+    asset_field: DR001.IB
+    value_fields: [close]
+    unit_rules:
+      default_unit: "%"
+      metric_units: {}
+      allowed_units: ["%"]
+    date_parse_rule:
+      source_fields_priority: [Date, date]
+      formats: ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]
+      allow_excel_serial: true
+      on_failure: invalid_date
+    asset_key_rule:
+      type: fixed
+      value: DR001.IB
+
+  - sheet: 固收-同业拆借利率
+    status: ready
+    asset_class: fixed_income
+    time_field: Date
+    asset_field: [LIUSDON.IR, SHIBORON.IR]
+    value_fields: [close]
+    unit_rules:
+      default_unit: "%"
+      metric_units: {}
+      allowed_units: ["%"]
+    date_parse_rule:
+      source_fields_priority: [Date, date]
+      formats: ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]
+      allow_excel_serial: true
+      on_failure: invalid_date
+    asset_key_rule:
+      type: fixed
+      value: 同业拆借利率
+
+  - sheet: 外汇-美元指数&人民币汇率
+    status: ready
+    asset_class: fx
+    time_field: Date
+    asset_field: [USDX.FX, USDCNY.EX]
+    value_fields: [close]
+    unit_rules:
+      default_unit: raw
+      metric_units: {}
+      allowed_units: [raw]
+    date_parse_rule:
+      source_fields_priority: [Date, date]
+      formats: ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]
+      allow_excel_serial: true
+      on_failure: invalid_date
+    asset_key_rule:
+      type: prefer_columns
+      columns: [ticker, Code, Name]
+      fallback: sheet_name
+
+  - sheet: 大宗商品-石油价格
+    status: ready
+    asset_class: commodity
+    time_field: Date
+    asset_field: S5111905
+    value_fields: [EDBclose]
+    unit_rules:
+      default_unit: raw
+      metric_units: {}
+      allowed_units: [raw]
+    date_parse_rule:
+      source_fields_priority: [Date, date]
+      formats: ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]
+      allow_excel_serial: true
+      on_failure: invalid_date
+    asset_key_rule:
+      type: fixed
+      value: S5111905
+
+  - sheet: 大宗商品-黄金价格
+    status: ready
+    asset_class: commodity
+    time_field: Date
+    asset_field: S0031645
+    value_fields: [EDBclose]
+    unit_rules:
+      default_unit: raw
+      metric_units: {}
+      allowed_units: [raw]
+    date_parse_rule:
+      source_fields_priority: [Date, date]
+      formats: ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]
+      allow_excel_serial: true
+      on_failure: invalid_date
+    asset_key_rule:
+      type: fixed
+      value: S0031645
+
+  - sheet: 衍生品-50ETF期权
+    status: ready
+    asset_class: derivative
+    time_field: date
+    asset_field: [mark_code, mark_name]
+    value_fields: [daily_volume, daily_call_volume, daily_put_volume, daily_position, daily_call_position, daily_put_position, daily_contract_rate]
+    unit_rules:
+      default_unit: raw
+      metric_units:
+        daily_contract_rate: "%"
+      allowed_units: [raw, "%"]
+    date_parse_rule:
+      source_fields_priority: [date, Date]
+      formats: ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]
+      allow_excel_serial: true
+      on_failure: invalid_date
+    asset_key_rule:
+      type: concat_columns
+      columns: [mark_code, mark_name]
+      delimiter: "|"

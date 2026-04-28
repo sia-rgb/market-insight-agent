@@ -1,0 +1,124 @@
+version: 1
+
+usage_policy:
+  purpose:
+    - support_why_it_matters
+    - support_possible_drivers
+  layers:
+    stable_semantics: define_indicator_meaning_and_deviation_meaning
+    reasoning_hint: provide_minimal_linkage_check
+  fallback_when_evidence_insufficient: 内部数据已显示该指标本周触发异常变动；后续重点观察相关政策、资金面、市场评论与同类资产表现是否同步变化
+
+boundaries:
+  rule_sources:
+    - config/rules_config.yaml
+    - config/metric_rule_mapping.yaml
+  output_schema_source: schemas/report_insights.schema.json
+  is_rule_source: false
+  is_output_schema_source: false
+  linkage_check_is_required_rule: false
+
+indicators:
+  - asset_class: equity
+    sheet: 权益-全球股指
+    metric_name: 最近一周
+    semantic: 全球权益风险偏好与资金配置方向代理。
+    deviation_meaning: 上行常见于 risk-on；下行常见于 risk-off。
+    linkage_check: 同周检查成交量是否同向；若量价背离，标注“驱动不充分/存在背离”。
+
+  - asset_class: equity
+    sheet: 权益-A股交易量
+    metric_name: A股总成交额（亿元）
+    semantic: 全市场流动性与交易活跃度温度计。
+    deviation_meaning: 放量上行常见于风险偏好回升；放量下行常见于情绪化抛压。
+    linkage_check: 联动股指方向，判断是趋势强化还是恐慌释放。
+
+  - asset_class: equity
+    sheet: 权益-南北向
+    metric_name: 南向-成交净买入(亿元,港元)
+    semantic: 内资南下配置强弱信号。
+    deviation_meaning: 净买入走强常见于港股风险偏好提升。
+    linkage_check: 联动港股主要指数；若净买入强但指数弱，提示“承接与外部抛压对冲”。
+
+  - asset_class: equity
+    sheet: 权益-两融余额
+    metric_name: 融资余额 / 融券余额
+    semantic: 杠杆多空敞口水平。
+    deviation_meaning: 融资上行常见于做多杠杆增强；融券上行常见于对冲/看空增强。
+    linkage_check: 联动股指位置；高位杠杆扩张需提示拥挤风险。
+
+  - asset_class: equity
+    sheet: 权益-两融余额
+    metric_name: 两融余额占A股流通市值(%)
+    semantic: 杠杆资金对整体定价的影响强度。
+    deviation_meaning: 占比偏高常见于市场脆弱度上升。
+    linkage_check: 联动波动率指标（如 VIX）判断是否同时出现风险放大。
+
+  - asset_class: equity
+    sheet: 权益-VIX
+    metric_name: close
+    semantic: 全球风险厌恶与尾部风险定价代理。
+    deviation_meaning: 上行常见于风险厌恶抬升。
+    linkage_check: 联动黄金或美债方向，确认是否进入避险模式。
+
+  - asset_class: equity
+    sheet: 权益-散户情绪资金流向
+    metric_name: largeBill... / smallBill...
+    semantic: 不同体量资金行为分层信号。
+    deviation_meaning: 大小单分化扩大常见于筹码再分配。
+    linkage_check: 检查大单与小单方向是否背离，背离时提示“结构分歧”。
+
+  - asset_class: fixed_income
+    sheet: 固收-债券收益率
+    metric_name: EDBclose
+    semantic: 长端无风险利率与贴现率锚。
+    deviation_meaning: 上行常见于紧缩预期/增长再定价；下行常见于宽松或避险。
+    linkage_check: 联动成长风格权益表现，识别贴现率压制是否成立。
+
+  - asset_class: fixed_income
+    sheet: 固收-DR001 / 同业拆借
+    metric_name: close
+    semantic: 短端流动性与资金价格。
+    deviation_meaning: 上行常见于短端流动性收紧。
+    linkage_check: 联动央行公开市场操作（OMO）或政策表述。
+
+  - asset_class: fixed_income
+    sheet: 固收-债券指数
+    metric_name: close
+    semantic: 债券价格总体表现。
+    deviation_meaning: 上行常见于利率下行或避险偏好增强。
+    linkage_check: 联动权益方向，观察股债跷跷板是否成立。
+
+  - asset_class: fx
+    sheet: 外汇-美元指数&人民币汇率
+    metric_name: close（美元/中间价）
+    semantic: 全球流动性与非美资产外部约束。
+    deviation_meaning: 美元走强常见于外部流动性偏紧。
+    linkage_check: 联动大宗商品或新兴市场风险资产方向。
+
+  - asset_class: commodity
+    sheet: 大宗商品-石油价格
+    metric_name: EDBclose
+    semantic: 需求预期与能源成本信号。
+    deviation_meaning: 上行常见于供给扰动或需求回升预期。
+    linkage_check: 优先检查地缘事件与供给端（如 OPEC+）新闻。
+
+  - asset_class: commodity
+    sheet: 大宗商品-黄金价格
+    metric_name: EDBclose
+    semantic: 实际利率与避险偏好镜像。
+    deviation_meaning: 上行常见于避险增强或实际利率下行预期。
+    linkage_check: 联动美元或实际利率方向，识别常规/非常规关系。
+
+  - asset_class: derivative
+    sheet: 衍生品-50ETF期权
+    metric_name: volume / position (Call/Put)
+    semantic: 期权层面的多空分歧与对冲需求。
+    deviation_meaning: Put 指标上行常见于防御需求提升。
+    linkage_check: 联动标的指数方向，区分预防性对冲与恐慌性买保。
+
+context_indicators:
+  - sheet: 权益-全球股指
+    metric_name: 最新收盘价 / 最近1月 / 年初至今
+    role: context
+    description: 用于定位绝对水平与中期位置，可辅助 How much 描述。
