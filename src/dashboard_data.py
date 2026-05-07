@@ -24,6 +24,8 @@ DISPLAY_COLUMNS = [
     "direction",
 ]
 
+GLOBAL_INDEX_SOURCE_SHEET = "权益-全球股指"
+
 
 def _clean_text(value: Any) -> str:
     if value is None:
@@ -137,6 +139,22 @@ def _build_series(df: pd.DataFrame) -> list[dict[str, Any]]:
     return sorted(out, key=lambda x: (_clean_text(x.get("source_sheet")), _clean_text(x.get("asset_name")), _clean_text(x.get("metric_name"))))
 
 
+def _previous_available_date(df: pd.DataFrame, target_date: pd.Timestamp) -> pd.Timestamp:
+    dates = sorted(v for v in df["date"].dropna().unique() if v < target_date)
+    if not dates:
+        return target_date
+    return pd.Timestamp(dates[-1]).normalize()
+
+
+def _dashboard_scope_frame(daily: pd.DataFrame, target_date: pd.Timestamp) -> tuple[pd.DataFrame, pd.DataFrame, pd.Timestamp]:
+    close_date = _previous_available_date(daily, target_date)
+    is_global_index = daily["source_sheet"].astype(str) == GLOBAL_INDEX_SOURCE_SHEET
+    scoped = daily[((is_global_index) & (daily["date"] <= target_date)) | ((~is_global_index) & (daily["date"] <= close_date))].copy()
+    scoped_is_global_index = scoped["source_sheet"].astype(str) == GLOBAL_INDEX_SOURCE_SHEET
+    latest_df = scoped[((scoped_is_global_index) & (scoped["date"] == target_date)) | ((~scoped_is_global_index) & (scoped["date"] == close_date))].copy()
+    return scoped, latest_df, close_date
+
+
 def build_daily_dashboard_frame(standardized_data: pd.DataFrame) -> pd.DataFrame:
     required = {"date", "source_sheet", "series_key", "metric_name", "value", "unit"}
     missing = sorted(required.difference(standardized_data.columns))
@@ -193,15 +211,16 @@ def build_dashboard_payload(
         target_date = daily["date"].max()
     else:
         target_date = requested.normalize()
-    latest_df = daily[daily["date"] == target_date].copy()
+    scoped_daily, latest_df, close_date = _dashboard_scope_frame(daily, target_date)
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "latest_date": _json_value(target_date),
-        "dates": [_json_value(v) for v in sorted(daily["date"].dropna().unique())],
-        "summary": _build_summary(daily, latest_df),
-        "sheets": _build_sheet_summary(daily, latest_df),
+        "effective_close_date": _json_value(close_date),
+        "dates": [_json_value(v) for v in sorted(scoped_daily["date"].dropna().unique())],
+        "summary": _build_summary(scoped_daily, latest_df),
+        "sheets": _build_sheet_summary(scoped_daily, latest_df),
         "latest_records": [_to_record(row) for _, row in latest_df.sort_values(["source_sheet", "asset_name", "metric_name"]).iterrows()],
         "rankings": _build_rankings(latest_df, top_n=top_n),
-        "series": _build_series(daily),
+        "series": _build_series(scoped_daily),
     }

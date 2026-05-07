@@ -38,6 +38,8 @@ const globalIndexPerformanceConfig = {
   baselineValue: 100,
 };
 
+const globalIndexSourceSheet = "权益-全球股指";
+
 const els = {
   dataDate: document.querySelector("#dataDate"),
   generatedAt: document.querySelector("#generatedAt"),
@@ -365,11 +367,37 @@ function monthTicks(dates) {
   });
 }
 
+function formatDisplayDate(dateText) {
+  const date = new Date(`${dateText}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return dateText || "--";
+  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+}
+
+function previousAvailableDate(date) {
+  const dates = [...(state.payload?.dates || [])]
+    .filter((item) => item && item < date)
+    .sort();
+  return dates.at(-1) || date;
+}
+
+function effectiveCloseDate() {
+  return state.payload?.effective_close_date || previousAvailableDate(state.selectedDate);
+}
+
+function isGlobalIndexSeries(series) {
+  return series?.source_sheet === globalIndexSourceSheet;
+}
+
+function recordDateForSeries(series) {
+  return isGlobalIndexSeries(series) ? state.selectedDate : effectiveCloseDate();
+}
+
 function getRecordsForDate(date) {
   const payload = state.payload;
   if (!payload) return [];
   return payload.series.flatMap((series) => {
-    const observation = series.observations.find((item) => item.date === date);
+    const targetDate = date || recordDateForSeries(series);
+    const observation = series.observations.find((item) => item.date === targetDate);
     if (!observation) return [];
     return [{
       date: observation.date,
@@ -392,7 +420,7 @@ function getRecordsForDate(date) {
 }
 
 function globalIndexSeries() {
-  return (state.payload?.series || []).filter((series) => series.source_sheet === "权益-全球股指");
+  return (state.payload?.series || []).filter((series) => isGlobalIndexSeries(series));
 }
 
 function latestObservationBefore(series, date) {
@@ -449,28 +477,37 @@ function renderGlobalIndexList() {
     return;
   }
 
-  els.globalIndexList.innerHTML = rows.map((row) => {
+  const header = `<div class="index-row index-head">
+    <div class="index-name"><strong>指数名称</strong></div>
+    <div class="index-metric"><span>收盘价</span></div>
+    <div class="index-metric"><span>周变动</span></div>
+    <div class="index-metric"><span>月变动</span></div>
+    <div class="index-metric"><span>YTD变动</span></div>
+  </div>`;
+
+  els.globalIndexList.innerHTML = header + rows.map((row) => {
     const close = row.metrics["最新收盘价"]?.value;
     const week = row.metrics["最近一周"]?.value;
     const month = row.metrics["最近1月"]?.value;
     const ytd = row.metrics["2026年至今"]?.value;
-    const title = `${row.asset_name || row.ticker}${isNumber(ytd) ? ` (${formatRatioPctPlain(ytd)})` : ""}`;
     const weekRecord = { direction: week > 0 ? "up" : week < 0 ? "down" : "flat" };
     const monthRecord = { direction: month > 0 ? "up" : month < 0 ? "down" : "flat" };
     const ytdRecord = { direction: ytd > 0 ? "up" : ytd < 0 ? "down" : "flat" };
     return `<div class="index-row">
-      <div>
-        <strong>${escapeHtml(title)}</strong>
-        <span>${escapeHtml(row.ticker || "")}</span>
-        <div class="index-badges">
-          <span class="change ${directionClass(weekRecord)}">周 ${escapeHtml(formatRatioPct(week))}</span>
-          <span class="change ${directionClass(monthRecord)}">月 ${escapeHtml(formatRatioPct(month))}</span>
-          <span class="change ${directionClass(ytdRecord)}">YTD ${escapeHtml(formatRatioPct(ytd))}</span>
-        </div>
+      <div class="index-name">
+        <strong>${escapeHtml(row.asset_name || row.ticker || "")}</strong>
       </div>
-      <div class="index-value">
+      <div class="index-metric index-value-cell">
         <strong>${escapeHtml(formatInteger(close))}</strong>
-        <span>收盘价</span>
+      </div>
+      <div class="index-metric index-value-cell change ${directionClass(weekRecord)}">
+        <strong>${escapeHtml(formatRatioPct(week))}</strong>
+      </div>
+      <div class="index-metric index-value-cell change ${directionClass(monthRecord)}">
+        <strong>${escapeHtml(formatRatioPct(month))}</strong>
+      </div>
+      <div class="index-metric index-value-cell change ${directionClass(ytdRecord)}">
+        <strong>${escapeHtml(formatRatioPct(ytd))}</strong>
       </div>
     </div>`;
   }).join("");
@@ -520,7 +557,7 @@ function vixPoints() {
     .filter((item) => (
       item.date
       && item.date >= "2026-01-01"
-      && item.date <= state.selectedDate
+      && item.date <= effectiveCloseDate()
       && isNumber(item.value)
     ))
     .sort((a, b) => a.date.localeCompare(b.date))
@@ -540,7 +577,7 @@ function treasuryPoints() {
     .filter((item) => (
       item.date
       && item.date >= "2026-01-01"
-      && item.date <= state.selectedDate
+      && item.date <= effectiveCloseDate()
       && isNumber(item.value)
     ))
     .sort((a, b) => a.date.localeCompare(b.date))
@@ -548,7 +585,7 @@ function treasuryPoints() {
 }
 
 function filteredRecords() {
-  return getRecordsForDate(state.selectedDate).filter((record) => {
+  return getRecordsForDate().filter((record) => {
     const classOk = state.selectedClass === "all" || record.asset_class === state.selectedClass;
     return classOk;
   });
@@ -556,11 +593,9 @@ function filteredRecords() {
 
 function setStatus() {
   const payload = state.payload;
-  els.dataDate.textContent = `数据日期 ${state.selectedDate || "--"}`;
-  const generated = payload?.generated_at ? new Date(payload.generated_at) : null;
-  els.generatedAt.textContent = generated && !Number.isNaN(generated.getTime())
-    ? `生成时间 ${generated.toLocaleString("zh-CN", { hour12: false })}`
-    : "生成时间 --";
+  els.dataDate.textContent = `数据日期 ${formatDisplayDate(effectiveCloseDate())}`;
+  const generatedDate = payload?.generated_at ? payload.generated_at.slice(0, 10) : "";
+  els.generatedAt.textContent = `生成日期 ${formatDisplayDate(generatedDate)}`;
 }
 
 function populateControls() {
@@ -821,7 +856,7 @@ function drawVixChart() {
 
   const width = canvas.width / ratio;
   const height = canvas.height / ratio;
-  const pad = { left: 38, right: 12, top: 14, bottom: 28 };
+  const pad = { left: 42, right: 14, top: 16, bottom: 30 };
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = "#071421";
   ctx.fillRect(0, 0, width, height);
