@@ -15,6 +15,16 @@ const classLabels = {
 
 const classOrder = ["equity", "fixed_income", "derivative", "fx", "commodity"];
 
+const metricLabels = {
+  daily_call_volume: "daily_call_volume（认购期权成交量，赌价格上涨）",
+  daily_volume: "daily_volume（期权全部合约总成交量，代表整体活跃度）",
+  daily_put_volume: "daily_put_volume（认沽期权成交量，赌价格下跌）",
+  daily_contract_rate: "daily_contract_rate（期权合约换手率，反映市场短期博弈热度）",
+  smallBillInflowMoney: "smallBillInflowMoney（单笔成交4万元以下的净流入，代表散户）",
+  middleBillInflowMoney: "middleBillInflowMoney（单笔成交4~20万元的净流入，代表游资）",
+  largeBillInflowMoney: "largeBillInflowMoney（单笔成交20万元以上的净流入，代表机构）",
+};
+
 const globalIndexPerformanceConfig = {
   startDate: "2026-01-05",
   sourceSheet: "权益-全球股指",
@@ -120,6 +130,44 @@ function signedMark(value) {
 
 function labelClass(value) {
   return classLabels[value] || value || "未分类";
+}
+
+function labelMetric(value) {
+  return metricLabels[value] || value || "";
+}
+
+function labelMetricBrief(value) {
+  const text = labelMetric(value);
+  if ([
+    "daily_call_volume",
+    "daily_volume",
+    "daily_put_volume",
+    "daily_contract_rate",
+    "smallBillInflowMoney",
+    "middleBillInflowMoney",
+    "largeBillInflowMoney",
+  ].includes(value)) {
+    return text;
+  }
+  return text.replace(/\s*[（(][^（）()]*[）)]\s*$/, "");
+}
+
+function titleAssetName(record) {
+  const raw = String(record.asset_name || record.source_sheet || "").trim();
+  const ticker = String(record.ticker || "").trim();
+  if (!raw) return ticker;
+  const parts = raw.split("|").map((part) => part.trim()).filter(Boolean);
+  if (parts.length > 1 && ticker && parts[0] === ticker) {
+    return parts.slice(1).join(" | ");
+  }
+  return raw;
+}
+
+function titleLine(record) {
+  const ticker = String(record.ticker || "").trim();
+  const asset = titleAssetName(record);
+  if (ticker && asset) return `${ticker} | ${asset}`;
+  return ticker || asset;
 }
 
 function dateOffset(dateText, days) {
@@ -386,29 +434,28 @@ function renderMovers(records) {
 
   const renderList = (items, emptyText) => {
     if (!items.length) return `<div class="empty mover-empty">${escapeHtml(emptyText)}</div>`;
-    return items.map((record) => (
-      `<div class="mover-item">
+    return items.map((record) => {
+      const title = titleLine(record);
+      return `<div class="mover-item">
         <div>
-          <strong>${escapeHtml(record.asset_name || record.source_sheet)}</strong>
-          <span>${escapeHtml(record.metric_name)} · ${escapeHtml(record.source_sheet)}</span>
+          <strong>${escapeHtml(title)}</strong>
+          <span>${escapeHtml(labelMetricBrief(record.metric_name))}</span>
         </div>
         <div class="change ${signedClass(record.daily_pct_change)}">${signedMark(record.daily_pct_change)} ${formatPct(record.daily_pct_change)}</div>
-      </div>`
-    )).join("");
+      </div>`;
+    }).join("");
   };
 
   els.moverList.innerHTML = `
     <div class="mover-column">
       <div class="mover-column-head">
-        <strong>日度涨幅榜 TOP5</strong>
-        <span>正向涨幅</span>
+        <strong>涨幅 TOP5</strong>
       </div>
       ${renderList(gainers, "暂无正向涨幅指标")}
     </div>
     <div class="mover-column">
       <div class="mover-column-head">
-        <strong>日度跌幅榜 TOP5</strong>
-        <span>负向跌幅</span>
+        <strong>跌幅 TOP5</strong>
       </div>
       ${renderList(decliners, "暂无负向跌幅指标")}
     </div>`;
@@ -437,7 +484,7 @@ function renderMetricCards(records) {
       <strong>${escapeHtml(record.asset_name || record.ticker || record.source_sheet)}</strong>
       <div class="value">${escapeHtml(formatValue(record.value, record.unit))}</div>
       <div class="metric-meta">
-        <span>${escapeHtml(record.metric_name)}</span>
+        <span>${escapeHtml(labelMetric(record.metric_name))}</span>
         <span class="change ${signedClass(record.daily_pct_change)}">${signedMark(record.daily_pct_change)} ${escapeHtml(formatPct(record.daily_pct_change))}</span>
       </div>
     </button>`;
@@ -457,7 +504,7 @@ function renderTable(records) {
     `<tr>
       <td>${escapeHtml(record.source_sheet)}</td>
       <td>${escapeHtml(record.asset_name || record.ticker)}</td>
-      <td>${escapeHtml(record.metric_name)}</td>
+      <td>${escapeHtml(labelMetric(record.metric_name))}</td>
       <td class="numeric">${escapeHtml(formatValue(record.value, record.unit))}</td>
       <td class="numeric change ${signedClass(record.daily_abs_change)}">${escapeHtml(formatValue(record.daily_abs_change, record.unit))}</td>
       <td class="numeric change ${signedClass(record.daily_pct_change)}">${escapeHtml(formatPct(record.daily_pct_change))}</td>
