@@ -1,10 +1,8 @@
 const state = {
   payload: null,
   selectedDate: "",
-  selectedSheet: "all",
   selectedClass: "all",
   selectedSeries: "",
-  search: "",
 };
 
 const classLabels = {
@@ -14,6 +12,8 @@ const classLabels = {
   commodity: "商品",
   derivative: "衍生品",
 };
+
+const classOrder = ["equity", "fixed_income", "derivative", "fx", "commodity"];
 
 const globalIndexPerformanceConfig = {
   startDate: "2026-01-05",
@@ -26,8 +26,6 @@ const els = {
   dataDate: document.querySelector("#dataDate"),
   generatedAt: document.querySelector("#generatedAt"),
   dateSelect: document.querySelector("#dateSelect"),
-  sheetSelect: document.querySelector("#sheetSelect"),
-  searchInput: document.querySelector("#searchInput"),
   classFilters: document.querySelector("#classFilters"),
   globalIndexList: document.querySelector("#globalIndexList"),
   globalIndexCanvas: document.querySelector("#globalIndexCanvas"),
@@ -336,13 +334,9 @@ function treasuryPoints() {
 }
 
 function filteredRecords() {
-  const query = state.search.trim().toLowerCase();
   return getRecordsForDate(state.selectedDate).filter((record) => {
     const classOk = state.selectedClass === "all" || record.asset_class === state.selectedClass;
-    const sheetOk = state.selectedSheet === "all" || record.source_sheet === state.selectedSheet;
-    const text = `${record.source_sheet} ${record.asset_name} ${record.metric_name} ${record.ticker}`.toLowerCase();
-    const queryOk = !query || text.includes(query);
-    return classOk && sheetOk && queryOk;
+    return classOk;
   });
 }
 
@@ -363,14 +357,8 @@ function populateControls() {
   )).join("");
   els.dateSelect.value = state.selectedDate;
 
-  const sheets = [...new Set((payload?.series || []).map((item) => item.source_sheet).filter(Boolean))].sort();
-  els.sheetSelect.innerHTML = [
-    '<option value="all">全部工作表</option>',
-    ...sheets.map((sheet) => `<option value="${escapeHtml(sheet)}">${escapeHtml(sheet)}</option>`),
-  ].join("");
-  els.sheetSelect.value = state.selectedSheet;
-
-  const classes = [...new Set((payload?.series || []).map((item) => item.asset_class).filter(Boolean))].sort();
+  const availableClasses = new Set((payload?.series || []).map((item) => item.asset_class).filter(Boolean));
+  const classes = classOrder.filter((value) => availableClasses.has(value));
   els.classFilters.innerHTML = [
     { value: "all", label: "全部" },
     ...classes.map((value) => ({ value, label: labelClass(value) })),
@@ -787,16 +775,6 @@ async function init() {
 
 els.dateSelect.addEventListener("change", (event) => {
   state.selectedDate = event.target.value;
-  render();
-});
-
-els.sheetSelect.addEventListener("change", (event) => {
-  state.selectedSheet = event.target.value;
-  render();
-});
-
-els.searchInput.addEventListener("input", (event) => {
-  state.search = event.target.value;
   render();
 });
 
