@@ -285,7 +285,36 @@ canvas {
 
 .mover-list {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.mover-column {
+  min-width: 0;
+  padding: 12px 14px 4px;
+  border: 1px solid rgba(40, 65, 93, 0.78);
+  background: rgba(7, 20, 33, 0.35);
+}
+
+.mover-column-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(40, 65, 93, 0.72);
+}
+
+.mover-column-head strong {
+  color: var(--white-soft);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.mover-column-head span {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .mover-item {
@@ -298,6 +327,11 @@ canvas {
 
 .mover-item:last-child {
   border-bottom: 0;
+}
+
+.mover-empty {
+  min-height: 220px;
+  margin-top: 12px;
 }
 
 .mover-item strong,
@@ -448,7 +482,8 @@ td.numeric {
 
   .toolbar,
   .global-grid,
-  .metric-grid {
+  .metric-grid,
+  .mover-list {
     grid-template-columns: 1fr;
   }
 

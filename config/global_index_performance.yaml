@@ -1,0 +1,55 @@
+version: 1
+
+global_index_performance:
+  id: global_index_performance_since_2026
+  name: 各股指自 2026-01-05 以来标准化点位表现
+  description: 基于各股指最新收盘价计算标准化点位曲线，基准日点位统一设为 100。
+
+  scope:
+    asset_class: equity
+    source_sheet: 权益-全球股指
+    metric_name: 最新收盘价
+
+  time_range:
+    start_date: "2026-01-05"
+    end_date: latest_trading_date
+    auto_update_end_date: true
+
+  baseline:
+    date: "2026-01-05"
+    normalized_value: 100
+    price_field: value
+    missing_baseline_price_policy: first_available_on_or_after_baseline_date
+
+  calculation:
+    output_field: normalized_index_level
+    formula: "(current_price / baseline_price) * 100"
+    required_fields:
+      - date
+      - asset_name
+      - ticker
+      - value
+    variables:
+      current_price: value
+      baseline_price: value_on_baseline_date
+
+  output:
+    type: time_series
+    include_only:
+      - date
+      - asset_name
+      - ticker
+      - normalized_index_level
+    exclude_statistics: true
+
+  display:
+    chart_type: line
+    x_axis:
+      field: date
+      label: 日期
+    y_axis:
+      field: normalized_index_level
+      label: 标准化点位
+      baseline_value: 100
+    series:
+      group_by: asset_name

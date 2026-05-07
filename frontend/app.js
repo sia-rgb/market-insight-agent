@@ -15,6 +15,13 @@ const classLabels = {
   derivative: "衍生品",
 };
 
+const globalIndexPerformanceConfig = {
+  startDate: "2026-01-05",
+  sourceSheet: "权益-全球股指",
+  metricName: "最新收盘价",
+  baselineValue: 100,
+};
+
 const els = {
   dataDate: document.querySelector("#dataDate"),
   generatedAt: document.querySelector("#generatedAt"),
@@ -53,6 +60,14 @@ function formatNumber(value, digits = 2) {
   }).format(value);
 }
 
+function formatInteger(value) {
+  if (!isNumber(value)) return "--";
+  return new Intl.NumberFormat("zh-CN", {
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  }).format(value);
+}
+
 function unitText(unit) {
   const text = String(unit ?? "").trim();
   return text && text.toLowerCase() !== "raw" ? text : "";
@@ -69,6 +84,11 @@ function formatPct(value) {
   return `${sign}${formatNumber(value, 2)}%`;
 }
 
+function formatRatioPct(value) {
+  if (!isNumber(value)) return "--";
+  return formatPct(value * 100);
+}
+
 function directionClass(record) {
   if (record.direction === "up") return "up";
   if (record.direction === "down") return "down";
@@ -78,6 +98,18 @@ function directionClass(record) {
 function directionMark(record) {
   if (record.direction === "up") return "▲";
   if (record.direction === "down") return "▼";
+  return "■";
+}
+
+function signedClass(value) {
+  if (value > 0) return "up";
+  if (value < 0) return "down";
+  return "flat";
+}
+
+function signedMark(value) {
+  if (value > 0) return "▲";
+  if (value < 0) return "▼";
   return "■";
 }
 
@@ -187,13 +219,13 @@ function renderGlobalIndexList() {
         <strong>${escapeHtml(row.asset_name || row.ticker)}</strong>
         <span>${escapeHtml(row.ticker || "")}</span>
         <div class="index-badges">
-          <span class="change ${directionClass(weekRecord)}">周 ${escapeHtml(formatPct(week))}</span>
-          <span class="change ${directionClass(monthRecord)}">月 ${escapeHtml(formatPct(month))}</span>
-          <span class="change ${directionClass(ytdRecord)}">YTD ${escapeHtml(formatPct(ytd))}</span>
+          <span class="change ${directionClass(weekRecord)}">周 ${escapeHtml(formatRatioPct(week))}</span>
+          <span class="change ${directionClass(monthRecord)}">月 ${escapeHtml(formatRatioPct(month))}</span>
+          <span class="change ${directionClass(ytdRecord)}">YTD ${escapeHtml(formatRatioPct(ytd))}</span>
         </div>
       </div>
       <div class="index-value">
-        <strong>${escapeHtml(formatNumber(close, 2))}</strong>
+        <strong>${escapeHtml(formatInteger(close))}</strong>
         <span>收盘价</span>
       </div>
     </div>`;
@@ -201,30 +233,35 @@ function renderGlobalIndexList() {
 }
 
 function buildGlobalPerformanceSeries() {
-  return globalIndexRows().slice(0, 8).map((row) => {
-    const annual = row.metrics["2025年全年"]?.value;
-    const ytd = row.metrics["2026年至今"]?.value;
-    const month = row.metrics["最近1月"]?.value;
-    const week = row.metrics["最近一周"]?.value;
-    const currentDate = row.metrics["最新收盘价"]?.date || state.selectedDate;
-    const yearEndValue = isNumber(annual) ? 100 * (1 + annual) : 100;
-    const currentValue = isNumber(ytd) ? yearEndValue * (1 + ytd) : yearEndValue;
-    const monthValue = isNumber(month) && (1 + month) !== 0 ? currentValue / (1 + month) : currentValue;
-    const weekValue = isNumber(week) && (1 + week) !== 0 ? currentValue / (1 + week) : currentValue;
-    const points = [
-      { date: "2025-01-01", value: 100 },
-      { date: "2025-12-31", value: yearEndValue },
-      { date: monthOffset(currentDate, -1), value: monthValue },
-      { date: dateOffset(currentDate, -7), value: weekValue },
-      { date: currentDate, value: currentValue },
-    ];
-    const deduped = [...new Map(points.map((point) => [point.date, point])).values()]
-      .sort((a, b) => a.date.localeCompare(b.date));
-    return {
-      name: row.asset_name || row.ticker,
-      points: deduped,
-    };
-  });
+  return (state.payload?.series || [])
+    .filter((series) => (
+      series.source_sheet === globalIndexPerformanceConfig.sourceSheet
+      && series.metric_name === globalIndexPerformanceConfig.metricName
+    ))
+    .map((series) => {
+      const observations = [...(series.observations || [])]
+        .filter((item) => (
+          item.date
+          && item.date >= globalIndexPerformanceConfig.startDate
+          && item.date <= state.selectedDate
+          && isNumber(item.value)
+        ))
+        .sort((a, b) => a.date.localeCompare(b.date));
+      const baselinePrice = observations[0]?.value;
+      if (!isNumber(baselinePrice) || baselinePrice === 0) {
+        return null;
+      }
+      const points = observations.map((item) => ({
+        date: item.date,
+        value: (item.value / baselinePrice) * globalIndexPerformanceConfig.baselineValue,
+      }));
+      return {
+        name: series.asset_name || series.ticker,
+        points,
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 8);
 }
 
 function filteredRecords() {
@@ -279,25 +316,43 @@ function populateControls() {
 }
 
 function renderMovers(records) {
-  const ranked = records
+  const gainers = records
     .filter((item) => isNumber(item.daily_pct_change) && item.daily_pct_change > 0)
     .sort((a, b) => b.daily_pct_change - a.daily_pct_change)
-    .slice(0, 10);
+    .slice(0, 5);
+  const decliners = records
+    .filter((item) => isNumber(item.daily_pct_change) && item.daily_pct_change < 0)
+    .sort((a, b) => a.daily_pct_change - b.daily_pct_change)
+    .slice(0, 5);
 
-  if (!ranked.length) {
-    els.moverList.innerHTML = '<div class="empty">暂无正向涨幅指标</div>';
-    return;
-  }
+  const renderList = (items, emptyText) => {
+    if (!items.length) return `<div class="empty mover-empty">${escapeHtml(emptyText)}</div>`;
+    return items.map((record) => (
+      `<div class="mover-item">
+        <div>
+          <strong>${escapeHtml(record.asset_name || record.source_sheet)}</strong>
+          <span>${escapeHtml(record.metric_name)} · ${escapeHtml(record.source_sheet)}</span>
+        </div>
+        <div class="change ${signedClass(record.daily_pct_change)}">${signedMark(record.daily_pct_change)} ${formatPct(record.daily_pct_change)}</div>
+      </div>`
+    )).join("");
+  };
 
-  els.moverList.innerHTML = ranked.map((record) => (
-    `<div class="mover-item">
-      <div>
-        <strong>${escapeHtml(record.asset_name || record.source_sheet)}</strong>
-        <span>${escapeHtml(record.metric_name)} · ${escapeHtml(record.source_sheet)}</span>
+  els.moverList.innerHTML = `
+    <div class="mover-column">
+      <div class="mover-column-head">
+        <strong>日度涨幅榜 TOP5</strong>
+        <span>正向涨幅</span>
       </div>
-      <div class="change ${directionClass(record)}">${directionMark(record)} ${formatPct(record.daily_pct_change)}</div>
-    </div>`
-  )).join("");
+      ${renderList(gainers, "暂无正向涨幅指标")}
+    </div>
+    <div class="mover-column">
+      <div class="mover-column-head">
+        <strong>日度跌幅榜 TOP5</strong>
+        <span>负向跌幅</span>
+      </div>
+      ${renderList(decliners, "暂无负向跌幅指标")}
+    </div>`;
 }
 
 function renderMetricCards(records) {
@@ -324,7 +379,7 @@ function renderMetricCards(records) {
       <div class="value">${escapeHtml(formatValue(record.value, record.unit))}</div>
       <div class="metric-meta">
         <span>${escapeHtml(record.metric_name)}</span>
-        <span class="change ${directionClass(record)}">${directionMark(record)} ${escapeHtml(formatPct(record.daily_pct_change))}</span>
+        <span class="change ${signedClass(record.daily_pct_change)}">${signedMark(record.daily_pct_change)} ${escapeHtml(formatPct(record.daily_pct_change))}</span>
       </div>
     </button>`;
   }).join("");
@@ -345,8 +400,8 @@ function renderTable(records) {
       <td>${escapeHtml(record.asset_name || record.ticker)}</td>
       <td>${escapeHtml(record.metric_name)}</td>
       <td class="numeric">${escapeHtml(formatValue(record.value, record.unit))}</td>
-      <td class="numeric change ${directionClass(record)}">${escapeHtml(formatValue(record.daily_abs_change, record.unit))}</td>
-      <td class="numeric change ${directionClass(record)}">${escapeHtml(formatPct(record.daily_pct_change))}</td>
+      <td class="numeric change ${signedClass(record.daily_abs_change)}">${escapeHtml(formatValue(record.daily_abs_change, record.unit))}</td>
+      <td class="numeric change ${signedClass(record.daily_pct_change)}">${escapeHtml(formatPct(record.daily_pct_change))}</td>
     </tr>`
   )).join("");
 }
@@ -362,7 +417,7 @@ function drawGlobalPerformanceChart() {
 
   const width = canvas.width / ratio;
   const height = canvas.height / ratio;
-  const pad = { left: 58, right: 122, top: 24, bottom: 42 };
+  const pad = { left: 58, right: 150, top: 24, bottom: 42 };
   ctx.clearRect(0, 0, width, height);
   ctx.fillStyle = "#071421";
   ctx.fillRect(0, 0, width, height);
@@ -415,10 +470,11 @@ function drawGlobalPerformanceChart() {
   ctx.textAlign = "left";
 
   const colors = ["#d8b766", "#46c5bb", "#55d58a", "#8aa8ff", "#f36d7a", "#f4a261", "#b8e986", "#c38fff"];
+  const labels = [];
   series.forEach((item, idx) => {
     const color = colors[idx % colors.length];
     ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.15;
     ctx.beginPath();
     item.points.forEach((point, pointIdx) => {
       const xx = x(point.date);
@@ -428,12 +484,44 @@ function drawGlobalPerformanceChart() {
     });
     ctx.stroke();
 
-    const legendY = pad.top + idx * 20;
-    ctx.fillStyle = color;
-    ctx.fillRect(width - pad.right + 22, legendY - 8, 10, 10);
-    ctx.fillStyle = "#dbe8f7";
-    ctx.font = "12px Segoe UI";
-    ctx.fillText(item.name, width - pad.right + 38, legendY + 1);
+    const lastPoint = item.points.at(-1);
+    if (lastPoint) {
+      ctx.beginPath();
+      ctx.arc(x(lastPoint.date), y(lastPoint.value), 2.4, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      labels.push({
+        color,
+        name: item.name,
+        x: x(lastPoint.date),
+        y: y(lastPoint.value),
+      });
+    }
+  });
+
+  labels.sort((a, b) => a.y - b.y);
+  const minLabelGap = 16;
+  labels.forEach((label, idx) => {
+    const minY = idx === 0 ? pad.top + 4 : labels[idx - 1].labelY + minLabelGap;
+    label.labelY = Math.max(label.y, minY);
+  });
+  for (let idx = labels.length - 1; idx >= 0; idx -= 1) {
+    const maxY = idx === labels.length - 1 ? height - pad.bottom - 4 : labels[idx + 1].labelY - minLabelGap;
+    labels[idx].labelY = Math.min(labels[idx].labelY, maxY);
+  }
+
+  ctx.font = "12px Segoe UI";
+  labels.forEach((label) => {
+    const labelX = width - pad.right + 16;
+    ctx.strokeStyle = label.color;
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(label.x + 4, label.y);
+    ctx.lineTo(labelX - 6, label.labelY);
+    ctx.stroke();
+
+    ctx.fillStyle = label.color;
+    ctx.fillText(label.name, labelX, label.labelY + 4);
   });
 }
 

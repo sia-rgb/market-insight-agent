@@ -289,6 +289,12 @@ def _standardize_snapshot_matrix(
     for idx in data.index:
         asset_name = _safe_str(data.at[idx, asset_name_col]) if asset_name_col else ""
         asset_code = _safe_str(data.at[idx, asset_code_col]) if asset_code_col else asset_name
+        if asset_code and not pd.isna(_to_date_value(asset_code, formats=formats, allow_excel_serial=allow_excel_serial)):
+            continue
+        if asset_name in GENERIC_METRIC_LABELS:
+            continue
+        if asset_name and not pd.isna(_normalize_numeric(pd.Series([asset_name])).iloc[0]):
+            continue
         asset_key = _build_asset_key(contract, asset_code or asset_name)
         for col_idx, metric_name in enumerate(headers):
             metric_name = _safe_str(metric_name)
@@ -315,6 +321,89 @@ def _standardize_snapshot_matrix(
                 "source_metric_name": metric_name,
                 "value_raw": _safe_str(data.at[idx, metric_name]),
                 "unit_raw": _extract_unit_from_source_metric(metric_name),
+                "is_valid": True,
+                "validation_code": VALIDATION_OK,
+                "validation_note": "",
+            }
+            if pd.isna(record["date"]):
+                _set_validation(record, "invalid_date")
+            if not asset_key:
+                _set_validation(record, "asset_key_build_failed")
+            if pd.isna(record["value"]):
+                _set_validation(record, "missing_required_fields")
+            if not unit_ok:
+                _set_validation(record, "unknown_unit", f"unit={unit}")
+            records.append(record)
+
+    if not records:
+        return pd.DataFrame()
+    out = pd.DataFrame(records)
+    out["week_start"] = out["date"] - pd.to_timedelta(out["date"].dt.weekday, unit="D")
+    out["week_end"] = out["week_start"] + pd.Timedelta(days=6)
+    return out
+
+
+def _standardize_global_index_history(
+    sheet_name: str,
+    raw_df: pd.DataFrame,
+    contract: SheetContract,
+    source_file_name: str,
+) -> pd.DataFrame:
+    close_row = None
+    for i in range(min(HEADER_SCAN_MAX_ROWS, len(raw_df))):
+        row_vals = [_safe_str(v).lower() for v in raw_df.iloc[i].tolist()]
+        if row_vals.count("close") >= 2:
+            close_row = i
+            break
+    if close_row is None:
+        return pd.DataFrame()
+
+    parse_rule = contract.date_parse_rule or {}
+    formats = _as_list(parse_rule.get("formats")) or ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]
+    allow_excel_serial = bool(parse_rule.get("allow_excel_serial", True))
+    metric_name = "最新收盘价"
+    unit, unit_ok = _resolve_unit(contract, metric_name, metric_name)
+    data = raw_df.iloc[close_row + 1 :].reset_index(drop=True)
+    records: list[dict[str, Any]] = []
+
+    seen_value_columns: set[int] = set()
+    for date_col in range(raw_df.shape[1] - 1):
+        value_col = date_col + 1
+        if value_col in seen_value_columns:
+            continue
+        if _safe_str(raw_df.iat[close_row, value_col]).lower() != "close":
+            continue
+        date_header = _safe_str(raw_df.iat[close_row, date_col]).lower()
+        if date_header == "close":
+            continue
+        seen_value_columns.add(value_col)
+
+        ticker = _safe_str(raw_df.iat[close_row - 2, value_col]) if close_row >= 2 else ""
+        asset_name = _safe_str(raw_df.iat[close_row - 1, value_col]) if close_row >= 1 else ticker
+        asset_key = _build_asset_key(contract, ticker or asset_name)
+        series_key = f"{asset_key}::{metric_name}" if asset_key else ""
+        parsed_dates = data.iloc[:, date_col].map(
+            lambda x: _to_date_value(x, formats=formats, allow_excel_serial=allow_excel_serial)
+        )
+        values = _normalize_numeric(data.iloc[:, value_col])
+
+        for idx in data.index:
+            record = {
+                "date": parsed_dates.loc[idx],
+                "asset_class": contract.asset_class,
+                "asset_name": asset_name or ticker,
+                "asset_key": asset_key,
+                "series_key": series_key,
+                "ticker": ticker,
+                "metric_name": metric_name,
+                "value": values.loc[idx],
+                "unit": unit,
+                "source_file": source_file_name,
+                "source_sheet": sheet_name,
+                "source_asset_name": asset_name,
+                "source_metric_name": "close",
+                "value_raw": _safe_str(data.iat[idx, value_col]),
+                "unit_raw": "",
                 "is_valid": True,
                 "validation_code": VALIDATION_OK,
                 "validation_note": "",
@@ -404,7 +493,12 @@ def standardize_sheet(
         return pd.DataFrame()
 
     if sheet_name == "权益-全球股指" and _looks_like_snapshot_matrix(raw_df, contract):
-        return _standardize_snapshot_matrix(sheet_name, raw_df, contract, source_file_name)
+        frames = [
+            _standardize_snapshot_matrix(sheet_name, raw_df, contract, source_file_name),
+            _standardize_global_index_history(sheet_name, raw_df, contract, source_file_name),
+        ]
+        frames = [frame for frame in frames if not frame.empty]
+        return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
     header_row = _find_header_row(raw_df)
     if header_row is None:
@@ -553,6 +647,11 @@ def _deduplicate_records(df: pd.DataFrame) -> pd.DataFrame:
     for _, grp in work.groupby(group_cols, dropna=False):
         if len(grp) == 1:
             keep_rows.append(grp.iloc[0])
+            continue
+
+        valid_grp = grp[(grp["is_valid"] == True) & (grp["validation_code"] == VALIDATION_OK)]
+        if len(valid_grp) == 1:
+            keep_rows.append(valid_grp.iloc[0])
             continue
 
         normalized = grp[cmp_cols].astype(str).fillna("")
