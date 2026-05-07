@@ -89,6 +89,11 @@ function formatRatioPct(value) {
   return formatPct(value * 100);
 }
 
+function formatRatioPctPlain(value) {
+  if (!isNumber(value)) return "--";
+  return `${formatNumber(value * 100, 2)}%`;
+}
+
 function directionClass(record) {
   if (record.direction === "up") return "up";
   if (record.direction === "down") return "down";
@@ -131,6 +136,21 @@ function monthOffset(dateText, months) {
   return date.toISOString().slice(0, 10);
 }
 
+function monthTicks(dates) {
+  const byMonth = new Map();
+  dates.forEach((date) => {
+    const key = date.slice(0, 7);
+    if (!byMonth.has(key)) byMonth.set(key, date);
+  });
+  return [...byMonth.entries()].map(([month, date], idx) => {
+    const [, monthText] = month.split("-");
+    return {
+      date,
+      label: `${Number(monthText)}月`,
+    };
+  });
+}
+
 function getRecordsForDate(date) {
   const payload = state.payload;
   if (!payload) return [];
@@ -168,6 +188,13 @@ function latestObservationBefore(series, date) {
   return observations.at(-1) || null;
 }
 
+function latestObservation(series) {
+  const observations = [...(series?.observations || [])]
+    .filter((item) => item.date && isNumber(item.value))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  return observations.at(-1) || null;
+}
+
 function globalIndexRows() {
   const byAsset = new Map();
   globalIndexSeries().forEach((series) => {
@@ -180,7 +207,9 @@ function globalIndexRows() {
         metrics: {},
       });
     }
-    const observation = latestObservationBefore(series, state.selectedDate);
+    const observation = series.metric_name === "2026年至今"
+      ? latestObservation(series)
+      : latestObservationBefore(series, state.selectedDate);
     if (observation) {
       byAsset.get(key).metrics[series.metric_name] = {
         value: observation.value,
@@ -211,12 +240,13 @@ function renderGlobalIndexList() {
     const week = row.metrics["最近一周"]?.value;
     const month = row.metrics["最近1月"]?.value;
     const ytd = row.metrics["2026年至今"]?.value;
+    const title = `${row.asset_name || row.ticker}${isNumber(ytd) ? ` (${formatRatioPctPlain(ytd)})` : ""}`;
     const weekRecord = { direction: week > 0 ? "up" : week < 0 ? "down" : "flat" };
     const monthRecord = { direction: month > 0 ? "up" : month < 0 ? "down" : "flat" };
     const ytdRecord = { direction: ytd > 0 ? "up" : ytd < 0 ? "down" : "flat" };
     return `<div class="index-row">
       <div>
-        <strong>${escapeHtml(row.asset_name || row.ticker)}</strong>
+        <strong>${escapeHtml(title)}</strong>
         <span>${escapeHtml(row.ticker || "")}</span>
         <div class="index-badges">
           <span class="change ${directionClass(weekRecord)}">周 ${escapeHtml(formatRatioPct(week))}</span>
@@ -464,9 +494,11 @@ function drawGlobalPerformanceChart() {
     ctx.fillText(formatNumber(label, 1), 12, yy + 4);
   }
 
-  ctx.fillText(dates[0] || "", pad.left, height - 14);
-  ctx.textAlign = "right";
-  ctx.fillText(dates.at(-1) || "", width - pad.right, height - 14);
+  monthTicks(dates).forEach((tick, idx, ticks) => {
+    const xx = x(tick.date);
+    ctx.textAlign = idx === 0 ? "left" : idx === ticks.length - 1 ? "right" : "center";
+    ctx.fillText(tick.label, xx, height - 14);
+  });
   ctx.textAlign = "left";
 
   const colors = ["#d8b766", "#46c5bb", "#55d58a", "#8aa8ff", "#f36d7a", "#f4a261", "#b8e986", "#c38fff"];

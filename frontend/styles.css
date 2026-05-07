@@ -197,6 +197,14 @@ input:focus,
   margin-top: 16px;
 }
 
+.global-grid .panel + .panel {
+  margin-top: 0;
+}
+
+.global-grid .panel-large canvas {
+  height: 376px;
+}
+
 .panel-head {
   display: flex;
   align-items: flex-start;
@@ -224,6 +232,13 @@ canvas {
   height: 360px;
   border: 1px solid rgba(40, 65, 93, 0.8);
   background: #071421;
+}
+
+.chart-note {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .index-list {
