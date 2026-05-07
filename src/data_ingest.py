@@ -49,6 +49,16 @@ def _normalize_numeric(series: pd.Series) -> pd.Series:
     return pd.to_numeric(series.astype(str).str.replace(",", "", regex=False), errors="coerce")
 
 
+def _normalize_a_share_turnover_value(sheet_name: str, metric_name: str, value: Any) -> Any:
+    if sheet_name != "权益-A股交易量":
+        return value
+    if metric_name not in {"上证指数", "深证成指"}:
+        return value
+    if pd.isna(value):
+        return value
+    return value / 100000000
+
+
 def _find_header_row(raw: pd.DataFrame) -> int | None:
     for i in range(min(HEADER_SCAN_MAX_ROWS, len(raw))):
         row_vals = {_safe_str(v) for v in raw.iloc[i].tolist()}
@@ -301,6 +311,7 @@ def _standardize_snapshot_matrix(
             if metric_name not in allowed_metrics or metric_name not in data.columns:
                 continue
             value = _normalize_numeric(pd.Series([data.at[idx, metric_name]])).iloc[0]
+            value = _normalize_a_share_turnover_value(sheet_name, metric_name, value)
             metric_date = parsed_header_dates[col_idx] if col_idx < len(parsed_header_dates) else pd.NaT
             if pd.isna(metric_date):
                 metric_date = fallback_date
@@ -564,6 +575,8 @@ def standardize_sheet(
             value_series = _normalize_numeric(block[metric_col])
             if not value_series.notna().any():
                 continue
+            if sheet_name == "权益-A股交易量" and metric_name in {"上证指数", "深证成指"}:
+                value_series = value_series / 100000000
             if upper_is_context and (metric_name == upper_metric_name or (
                 len(allowed_metrics) == 1
                 and metric_base != metric_name

@@ -2,7 +2,6 @@ const state = {
   payload: null,
   selectedDate: "",
   selectedClass: "all",
-  selectedSeries: "",
 };
 
 const classLabels = {
@@ -16,10 +15,17 @@ const classLabels = {
 const classOrder = ["equity", "fixed_income", "derivative", "fx", "commodity"];
 
 const metricLabels = {
+  close: "close（最新收盘价）",
+  EDBclose: "EDBclose（最新收盘价）",
   daily_call_volume: "daily_call_volume（认购期权成交量，赌价格上涨）",
   daily_volume: "daily_volume（期权全部合约总成交量，代表整体活跃度）",
   daily_put_volume: "daily_put_volume（认沽期权成交量，赌价格下跌）",
   daily_contract_rate: "daily_contract_rate（期权合约换手率，反映市场短期博弈热度）",
+  daily_call_position: "daily_call_position（认购期权持仓量，反映市场中长期多头预期）",
+  daily_put_position: "daily_put_position（认沽期权持仓量，反映市场中长期空头预期）",
+  daily_position: "daily_position（期权全部合约总持仓量，反映市场中长期配置与对冲总需求）",
+  "USDCNY.EX": "USDCNY.EX（美元兑人民币汇率）",
+  "USDX.FX": "USDX.FX（美元对一篮子主要货币的加权平均汇率）",
   smallBillInflowMoney: "smallBillInflowMoney（单笔成交4万元以下的净流入，代表散户）",
   middleBillInflowMoney: "middleBillInflowMoney（单笔成交4~20万元的净流入，代表游资）",
   largeBillInflowMoney: "largeBillInflowMoney（单笔成交20万元以上的净流入，代表机构）",
@@ -42,8 +48,6 @@ const els = {
   vixCanvas: document.querySelector("#vixCanvas"),
   treasuryCanvas: document.querySelector("#treasuryCanvas"),
   moverList: document.querySelector("#moverList"),
-  metricGrid: document.querySelector("#metricGrid"),
-  recordCount: document.querySelector("#recordCount"),
   detailRows: document.querySelector("#detailRows"),
 };
 
@@ -88,10 +92,23 @@ function formatValue(value, unit) {
   return `${formatNumber(value, 4)}${suffix ? ` ${suffix}` : ""}`;
 }
 
+function formatSignedValue(value, unit) {
+  if (!isNumber(value)) return "--";
+  const sign = value > 0 ? "+" : "";
+  const suffix = unitText(unit);
+  return `${sign}${formatNumber(value, 4)}${suffix ? ` ${suffix}` : ""}`;
+}
+
 function formatPct(value) {
   if (!isNumber(value)) return "--";
   const sign = value > 0 ? "+" : "";
   return `${sign}${formatNumber(value, 2)}%`;
+}
+
+function formatPctFixed(value, digits = 2) {
+  if (!isNumber(value)) return "--";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${formatNumberFixed(value, digits)}%`;
 }
 
 function formatRatioPct(value) {
@@ -102,6 +119,83 @@ function formatRatioPct(value) {
 function formatRatioPctPlain(value) {
   if (!isNumber(value)) return "--";
   return `${formatNumber(value * 100, 2)}%`;
+}
+
+function formatNumberFixed(value, digits = 2) {
+  if (!isNumber(value)) return "--";
+  return new Intl.NumberFormat("zh-CN", {
+    maximumFractionDigits: digits,
+    minimumFractionDigits: digits,
+  }).format(value);
+}
+
+function formatSignedValueFixed(value, unit, digits = 2) {
+  if (!isNumber(value)) return "--";
+  const sign = value > 0 ? "+" : "";
+  const suffix = unitText(unit);
+  return `${sign}${formatNumberFixed(value, digits)}${suffix ? ` ${suffix}` : ""}`;
+}
+
+function formatValueFixed(value, unit, digits = 2) {
+  const suffix = unitText(unit);
+  return `${formatNumberFixed(value, digits)}${suffix ? ` ${suffix}` : ""}`;
+}
+
+function isOptionLotMetric(record) {
+  return record?.source_sheet === "衍生品-50ETF期权" && [
+    "daily_volume",
+    "daily_call_position",
+    "daily_call_volume",
+    "daily_position",
+    "daily_put_position",
+    "daily_put_volume",
+  ].includes(record.metric_name);
+}
+
+function formatOptionLotValue(value) {
+  if (!isNumber(value)) return "--";
+  return `${formatNumberFixed(value / 10000, 2)}万张`;
+}
+
+function isMarginBalanceMetric(record) {
+  return record?.source_sheet === "权益-两融余额" && [
+    "两融交易额",
+    "融券余额",
+    "融资买入额",
+    "融资余额",
+    "融资卖出额",
+    "融资融券余额(沪深两市)",
+  ].includes(record.metric_name);
+}
+
+function formatMarginBalanceValue(value) {
+  if (!isNumber(value)) return "--";
+  return `${formatNumberFixed(value / 100000000, 2)}亿元`;
+}
+
+function formatMarginBalanceChange(value) {
+  if (!isNumber(value)) return "--";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${formatNumberFixed(value / 100000000, 2)}亿元`;
+}
+
+function isRetailFlowMetric(record) {
+  return record?.source_sheet === "权益-散户情绪资金流向" && [
+    "smallBillInflowMoney",
+    "middleBillInflowMoney",
+    "largeBillInflowMoney",
+  ].includes(record.metric_name);
+}
+
+function formatRetailFlowValue(value) {
+  if (!isNumber(value)) return "--";
+  return `${formatNumberFixed(value / 10000, 2)}亿元`;
+}
+
+function formatRetailFlowChange(value) {
+  if (!isNumber(value)) return "--";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${formatNumberFixed(value / 10000, 2)}亿元`;
 }
 
 function directionClass(record) {
@@ -150,6 +244,78 @@ function labelMetricBrief(value) {
     return text;
   }
   return text.replace(/\s*[（(][^（）()]*[）)]\s*$/, "");
+}
+
+function labelMetricDetail(value) {
+  if ([
+    "A股总成交额（亿元）",
+    "两融交易额占A股成交额(%)",
+    "南向-成交净买入(亿元,港元)",
+  ].includes(value)) {
+    return String(value || "").replace(/\s*[（(][^（）()]*[）)]\s*$/, "");
+  }
+  return labelMetric(value);
+}
+
+function splitMetricDetailText(record) {
+  const raw = labelMetricDetailRecord(record);
+  const ticker = String(record?.ticker || "").trim();
+  if (ticker === "USDCNY.EX" && record?.metric_name === "close") {
+    return { main: raw, note: "美元兑人民币汇率" };
+  }
+  if (ticker === "USDX.FX" && record?.metric_name === "close") {
+    return { main: raw, note: "美元对一篮子主要货币的加权平均汇率" };
+  }
+  const groupedSheets = new Set(["权益-散户情绪资金流向", "衍生品-50ETF期权"]);
+  if (!groupedSheets.has(record?.source_sheet)) {
+    return { main: raw, note: "" };
+  }
+  const text = String(raw || "").trim();
+  const match = text.match(/^(.*?)[（(]([^（）()]*)[）)]$/);
+  if (!match) {
+    return { main: text, note: "" };
+  }
+  return {
+    main: match[1].trim(),
+    note: match[2].trim(),
+  };
+}
+
+const detailGroupOrder = ["权益", "资金面", "外汇", "衍生品", "固收", "商品"];
+
+function detailGroupLabel(record) {
+  const sheet = String(record?.source_sheet || "").trim();
+  if (sheet === "权益-VIX") return "权益";
+  if (["权益-A股交易量", "权益-两融余额", "权益-散户情绪资金流向", "权益-南北向"].includes(sheet)) return "资金面";
+  if (sheet.startsWith("外汇-")) return "外汇";
+  if (sheet.startsWith("衍生品-")) return "衍生品";
+  if (sheet.startsWith("固收-")) return "固收";
+  if (sheet.startsWith("大宗商品-")) return "商品";
+  return "其他";
+}
+
+function renderNumericHtml(text) {
+  const raw = String(text ?? "");
+  const match = raw.match(/^([+-]?[\d,]+(?:\.\d+)?)(?:\s*(.+))?$/);
+  if (!match) return escapeHtml(raw);
+  const main = match[1];
+  const unit = (match[2] || "").trim();
+  return `<span class="numeric-wrap"><span class="numeric-main">${escapeHtml(main)}</span>${unit ? `<span class="numeric-unit">${escapeHtml(unit)}</span>` : ""}</span>`;
+}
+
+function labelMetricDetailRecord(record) {
+  const ticker = String(record.ticker || "").trim();
+  if ((ticker === "USDCNY.EX" || ticker === "USDX.FX") && record?.metric_name === "close") {
+    return labelMetric("close");
+  }
+  return labelMetricDetail(record.metric_name);
+}
+
+function labelAssetDetail(record) {
+  const ticker = String(record.ticker || "").trim();
+  if (ticker === "USDCNY.EX") return "USDCNY.EX（美元兑人民币汇率）";
+  if (ticker === "USDX.FX") return "USDX.FX（美元指数）";
+  return record.asset_name || record.ticker || "";
 }
 
 function titleAssetName(record) {
@@ -461,55 +627,66 @@ function renderMovers(records) {
     </div>`;
 }
 
-function renderMetricCards(records) {
-  const visible = records
-    .slice()
-    .sort((a, b) => Math.abs(b.daily_pct_change || 0) - Math.abs(a.daily_pct_change || 0))
-    .slice(0, 16);
-
-  els.recordCount.textContent = `${records.length} 条`;
-  if (!visible.length) {
-    els.metricGrid.innerHTML = '<div class="empty">暂无匹配指标</div>';
-    return;
-  }
-
-  if (!visible.some((item) => item.series_key === state.selectedSeries)) {
-    state.selectedSeries = visible[0].series_key;
-  }
-
-  els.metricGrid.innerHTML = visible.map((record) => {
-    const active = record.series_key === state.selectedSeries ? " active" : "";
-    return `<button type="button" class="metric-card${active}" data-series="${escapeHtml(record.series_key)}">
-      <span>${escapeHtml(record.source_sheet)}</span>
-      <strong>${escapeHtml(record.asset_name || record.ticker || record.source_sheet)}</strong>
-      <div class="value">${escapeHtml(formatValue(record.value, record.unit))}</div>
-      <div class="metric-meta">
-        <span>${escapeHtml(labelMetric(record.metric_name))}</span>
-        <span class="change ${signedClass(record.daily_pct_change)}">${signedMark(record.daily_pct_change)} ${escapeHtml(formatPct(record.daily_pct_change))}</span>
-      </div>
-    </button>`;
-  }).join("");
-
-  els.metricGrid.querySelectorAll(".metric-card").forEach((card) => {
-    card.addEventListener("click", () => {
-      state.selectedSeries = card.dataset.series || "";
-      render();
-    });
-  });
-}
-
 function renderTable(records) {
-  const visible = records.slice(0, 120);
-  els.detailRows.innerHTML = visible.map((record) => (
-    `<tr>
+  const visible = records.filter((record) => record.source_sheet !== "权益-全球股指").slice(0, 120);
+  const grouped = new Map();
+  visible.forEach((record) => {
+    const group = detailGroupLabel(record);
+    if (!grouped.has(group)) grouped.set(group, []);
+    grouped.get(group).push(record);
+  });
+
+  const renderRow = (record) => {
+    const optionLot = isOptionLotMetric(record);
+    const marginBalance = isMarginBalanceMetric(record);
+    const retailFlow = isRetailFlowMetric(record);
+    const valueText = optionLot
+      ? formatOptionLotValue(record.value)
+      : marginBalance
+        ? formatMarginBalanceValue(record.value)
+        : retailFlow
+          ? formatRetailFlowValue(record.value)
+          : formatValueFixed(record.value, record.unit, 2);
+    const absChangeText = optionLot
+      ? formatSignedValueFixed(Number.isFinite(record.daily_abs_change) ? record.daily_abs_change / 10000 : record.daily_abs_change, "万张", 2)
+      : marginBalance
+        ? formatMarginBalanceChange(record.daily_abs_change)
+        : retailFlow
+          ? formatRetailFlowChange(record.daily_abs_change)
+          : formatSignedValueFixed(record.daily_abs_change, record.unit, 2);
+    const pctText = record?.ticker === "USDCNY.EX"
+      ? formatPctFixed(record.daily_pct_change, 2)
+      : formatPct(record.daily_pct_change);
+    const metricText = splitMetricDetailText(record);
+    const metricCell = metricText.note
+      ? `<div class="metric-cell"><div class="metric-main">${escapeHtml(metricText.main)}</div><div class="metric-note">${escapeHtml(metricText.note)}</div></div>`
+      : `<div class="metric-cell"><div class="metric-main">${escapeHtml(metricText.main)}</div></div>`;
+    return `<tr>
       <td>${escapeHtml(record.source_sheet)}</td>
-      <td>${escapeHtml(record.asset_name || record.ticker)}</td>
-      <td>${escapeHtml(labelMetric(record.metric_name))}</td>
-      <td class="numeric">${escapeHtml(formatValue(record.value, record.unit))}</td>
-      <td class="numeric change ${signedClass(record.daily_abs_change)}">${escapeHtml(formatValue(record.daily_abs_change, record.unit))}</td>
-      <td class="numeric change ${signedClass(record.daily_pct_change)}">${escapeHtml(formatPct(record.daily_pct_change))}</td>
-    </tr>`
-  )).join("");
+      <td>${escapeHtml(labelAssetDetail(record))}</td>
+      <td>${metricCell}</td>
+      <td class="numeric">${renderNumericHtml(valueText)}</td>
+      <td class="numeric change ${signedClass(record.daily_abs_change)}">${renderNumericHtml(absChangeText)}</td>
+      <td class="numeric change ${signedClass(record.daily_pct_change)}">${renderNumericHtml(pctText)}</td>
+    </tr>`;
+  };
+
+  const sections = [];
+  detailGroupOrder.forEach((group) => {
+    const rows = grouped.get(group) || [];
+    if (!rows.length) return;
+    sections.push(`<tr class="section-row"><td colspan="6">${escapeHtml(group)}</td></tr>`);
+    sections.push(...rows.map(renderRow));
+    grouped.delete(group);
+  });
+
+  for (const [group, rows] of grouped.entries()) {
+    if (!rows.length) continue;
+    sections.push(`<tr class="section-row"><td colspan="6">${escapeHtml(group)}</td></tr>`);
+    sections.push(...rows.map(renderRow));
+  }
+
+  els.detailRows.innerHTML = sections.join("");
 }
 
 function drawGlobalPerformanceChart() {
@@ -800,7 +977,6 @@ function render() {
   drawVixChart();
   drawTreasuryChart();
   renderMovers(records);
-  renderMetricCards(records);
   renderTable(records);
 }
 

@@ -143,8 +143,7 @@ input::placeholder {
 
 select:focus,
 input:focus,
-.segmented button:focus-visible,
-.metric-card:focus-visible {
+.segmented button:focus-visible {
   border-color: var(--cyan);
   box-shadow: 0 0 0 2px rgba(70, 197, 187, 0.18);
 }
@@ -174,8 +173,7 @@ input:focus,
   background: var(--gold);
 }
 
-.panel,
-.metric-card {
+.panel {
   border: 1px solid var(--line);
   background: linear-gradient(180deg, rgba(19, 43, 67, 0.96), rgba(13, 29, 48, 0.98));
   box-shadow: var(--shadow);
@@ -385,8 +383,7 @@ canvas {
   margin-top: 12px;
 }
 
-.mover-item strong,
-.metric-card strong {
+.mover-item strong {
   display: block;
   min-width: 0;
   overflow-wrap: anywhere;
@@ -395,8 +392,7 @@ canvas {
   line-height: 1.35;
 }
 
-.mover-item span,
-.metric-card span {
+.mover-item span {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.35;
@@ -418,42 +414,6 @@ canvas {
 
 .change.flat {
   color: var(--muted);
-}
-
-.metric-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.metric-card {
-  min-height: 156px;
-  padding: 14px;
-  text-align: left;
-  color: inherit;
-  cursor: pointer;
-}
-
-.metric-card.active {
-  border-color: var(--gold);
-  box-shadow: 0 0 0 1px rgba(216, 183, 102, 0.45), var(--shadow);
-}
-
-.metric-card .value {
-  margin: 14px 0 8px;
-  color: var(--text);
-  font-size: 24px;
-  line-height: 1.05;
-  font-weight: 750;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-}
-
-.metric-card .metric-meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  align-items: flex-end;
 }
 
 .table-panel {
@@ -483,16 +443,75 @@ td {
 th {
   color: var(--gold);
   background: #0b1a2b;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+th.numeric {
+  text-align: right;
 }
 
 td {
   color: var(--white-soft);
+  line-height: 1.35;
 }
 
 td.numeric {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  text-align: right;
+}
+
+tbody tr:not(.section-row) td {
+  padding-top: 11px;
+  padding-bottom: 11px;
+}
+
+.metric-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.metric-main {
+  line-height: 1.25;
+}
+
+.metric-note {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.numeric-wrap {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 4px;
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+.numeric-main {
+  font-variant-numeric: tabular-nums;
+}
+
+.numeric-unit {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.section-row td {
+  padding: 9px 12px;
+  color: var(--gold);
+  background: rgba(11, 26, 43, 0.82);
+  border-top: 1px solid rgba(105, 123, 149, 0.32);
+  border-bottom: 1px solid rgba(105, 123, 149, 0.28);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 .empty {
@@ -510,9 +529,6 @@ td.numeric {
     grid-template-columns: 1fr 1fr;
   }
 
-  .metric-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 720px) {
@@ -533,7 +549,6 @@ td.numeric {
 
   .toolbar,
   .global-grid,
-  .metric-grid,
   .mover-list {
     grid-template-columns: 1fr;
   }
