@@ -16,6 +16,7 @@ VALIDATION_OK = "ok"
 HEADER_SCAN_MAX_ROWS = 30
 DATA_START_OFFSET = 2
 TICKER_COLUMN_NON_NUMERIC_MAX_RATIO = 0.5
+GENERIC_METRIC_LABELS = {"close", "EDBclose", "收盘价", "成交额", "amt", "日期"}
 
 
 @dataclass
@@ -68,6 +69,60 @@ def _extract_unit_from_source_metric(source_metric_name: str) -> str:
     if not matches:
         return ""
     return _safe_str(matches[-1])
+
+
+def _is_unnamed_header(value: str) -> bool:
+    text = _safe_str(value)
+    return not text or text.lower().startswith("unnamed")
+
+
+def _choose_metric_name(
+    metric_col: str,
+    source_metric_name: str,
+    below_metric_name: str,
+    upper_metric_name: str,
+    allowed_metrics: set[str],
+) -> str:
+    candidates = [
+        _safe_str(metric_col),
+        _safe_str(source_metric_name),
+        _safe_str(below_metric_name),
+        _safe_str(upper_metric_name),
+    ]
+    if allowed_metrics:
+        for cand in candidates:
+            if cand in allowed_metrics:
+                return cand
+        if len(allowed_metrics) == 1:
+            return next(iter(allowed_metrics))
+        return ""
+
+    for cand in candidates:
+        if cand and not _is_unnamed_header(cand) and cand not in DATE_KEYS:
+            return cand
+    return ""
+
+
+def _unit_source_name(*candidates: str) -> str:
+    for cand in candidates:
+        text = _safe_str(cand)
+        if _extract_unit_from_source_metric(text):
+            return text
+    for cand in candidates:
+        text = _safe_str(cand)
+        if text:
+            return text
+    return ""
+
+
+def _candidate_column_asset(metric_col: str, source_metric_name: str, upper_metric_name: str, metric_name: str) -> str:
+    for cand in [_safe_str(source_metric_name), _safe_str(upper_metric_name), _safe_str(metric_col)]:
+        if not cand or _is_unnamed_header(cand) or cand in DATE_KEYS or cand == metric_name:
+            continue
+        if cand in GENERIC_METRIC_LABELS or "收盘价" in cand:
+            continue
+        return cand
+    return ""
 
 
 def _to_date_value(value: Any, formats: list[str], allow_excel_serial: bool) -> pd.Timestamp:
@@ -138,14 +193,24 @@ def load_excel_sheets(input_file: str) -> dict[str, pd.DataFrame]:
     return {name: pd.read_excel(input_file, sheet_name=name, header=None) for name in excel.sheet_names}
 
 
-def _resolve_asset_name(block: pd.DataFrame, row_idx: int, contract: SheetContract, ticker_col: str | None) -> str:
+def _resolve_asset_name(
+    block: pd.DataFrame,
+    row_idx: int,
+    contract: SheetContract,
+    ticker_col: str | None,
+    column_asset_name: str = "",
+) -> str:
     rule = contract.asset_key_rule or {}
     rule_type = _safe_str(rule.get("type")) or "prefer_columns"
     rule_cols = _as_list(rule.get("columns"))
     fallback = _safe_str(rule.get("fallback"))
+    asset_fields = _as_list(contract.asset_field)
 
     def _from_col(col: str) -> str:
         return _safe_str(block.at[row_idx, col]) if col in block.columns else ""
+
+    if column_asset_name and (rule_type != "fixed" or len(asset_fields) > 1):
+        return column_asset_name
 
     if rule_type == "fixed":
         fixed = _safe_str(rule.get("value"))
@@ -169,7 +234,6 @@ def _resolve_asset_name(block: pd.DataFrame, row_idx: int, contract: SheetContra
             if value:
                 return value
 
-    asset_fields = _as_list(contract.asset_field)
     for field in asset_fields:
         value = _from_col(field)
         if value:
@@ -187,6 +251,101 @@ def _resolve_asset_name(block: pd.DataFrame, row_idx: int, contract: SheetContra
     return ""
 
 
+def _standardize_snapshot_matrix(
+    sheet_name: str,
+    raw_df: pd.DataFrame,
+    contract: SheetContract,
+    source_file_name: str,
+) -> pd.DataFrame:
+    header_row = None
+    allowed_metrics = set(contract.value_fields or [])
+    for i in range(min(HEADER_SCAN_MAX_ROWS, len(raw_df))):
+        row_vals = {_safe_str(v) for v in raw_df.iloc[i].tolist()}
+        if row_vals.intersection(allowed_metrics):
+            header_row = i
+            break
+    if header_row is None:
+        return pd.DataFrame()
+
+    headers = [_safe_str(v) for v in raw_df.iloc[header_row].tolist()]
+    date_row_idx = header_row - 1 if header_row - 1 >= 0 else header_row
+    date_headers = raw_df.iloc[date_row_idx].tolist()
+    data = raw_df.iloc[header_row + 1 :].reset_index(drop=True).dropna(how="all")
+    if data.empty:
+        return pd.DataFrame()
+    data.columns = _make_unique_columns(headers)
+
+    parse_rule = contract.date_parse_rule or {}
+    formats = _as_list(parse_rule.get("formats")) or ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]
+    allow_excel_serial = bool(parse_rule.get("allow_excel_serial", True))
+    parsed_header_dates = [_to_date_value(v, formats=formats, allow_excel_serial=allow_excel_serial) for v in date_headers]
+    fallback_dates = [d for d in parsed_header_dates if not pd.isna(d)]
+    fallback_date = max(fallback_dates) if fallback_dates else pd.NaT
+
+    records: list[dict[str, Any]] = []
+    asset_code_col = "Code" if "Code" in data.columns else ""
+    asset_name_col = "Name" if "Name" in data.columns else asset_code_col
+
+    for idx in data.index:
+        asset_name = _safe_str(data.at[idx, asset_name_col]) if asset_name_col else ""
+        asset_code = _safe_str(data.at[idx, asset_code_col]) if asset_code_col else asset_name
+        asset_key = _build_asset_key(contract, asset_code or asset_name)
+        for col_idx, metric_name in enumerate(headers):
+            metric_name = _safe_str(metric_name)
+            if metric_name not in allowed_metrics or metric_name not in data.columns:
+                continue
+            value = _normalize_numeric(pd.Series([data.at[idx, metric_name]])).iloc[0]
+            metric_date = parsed_header_dates[col_idx] if col_idx < len(parsed_header_dates) else pd.NaT
+            if pd.isna(metric_date):
+                metric_date = fallback_date
+            unit, unit_ok = _resolve_unit(contract, metric_name, metric_name)
+            record = {
+                "date": metric_date,
+                "asset_class": contract.asset_class,
+                "asset_name": asset_name or asset_code,
+                "asset_key": asset_key,
+                "series_key": f"{asset_key}::{metric_name}" if asset_key else "",
+                "ticker": asset_code,
+                "metric_name": metric_name,
+                "value": value,
+                "unit": unit,
+                "source_file": source_file_name,
+                "source_sheet": sheet_name,
+                "source_asset_name": asset_name,
+                "source_metric_name": metric_name,
+                "value_raw": _safe_str(data.at[idx, metric_name]),
+                "unit_raw": _extract_unit_from_source_metric(metric_name),
+                "is_valid": True,
+                "validation_code": VALIDATION_OK,
+                "validation_note": "",
+            }
+            if pd.isna(record["date"]):
+                _set_validation(record, "invalid_date")
+            if not asset_key:
+                _set_validation(record, "asset_key_build_failed")
+            if pd.isna(record["value"]):
+                _set_validation(record, "missing_required_fields")
+            if not unit_ok:
+                _set_validation(record, "unknown_unit", f"unit={unit}")
+            records.append(record)
+
+    if not records:
+        return pd.DataFrame()
+    out = pd.DataFrame(records)
+    out["week_start"] = out["date"] - pd.to_timedelta(out["date"].dt.weekday, unit="D")
+    out["week_end"] = out["week_start"] + pd.Timedelta(days=6)
+    return out
+
+
+def _looks_like_snapshot_matrix(raw_df: pd.DataFrame, contract: SheetContract) -> bool:
+    allowed_metrics = set(contract.value_fields or [])
+    for i in range(min(HEADER_SCAN_MAX_ROWS, len(raw_df))):
+        row_vals = {_safe_str(v) for v in raw_df.iloc[i].tolist()}
+        if {"Code", "Name"}.issubset(row_vals) and row_vals.intersection(allowed_metrics):
+            return True
+    return False
+
+
 def _build_asset_key(contract: SheetContract, asset_name: str) -> str:
     if not asset_name:
         return ""
@@ -198,9 +357,9 @@ def _resolve_unit(contract: SheetContract, metric_name: str, source_metric_name:
     metric_units = unit_rules.get("metric_units") or {}
     default_unit = _safe_str(unit_rules.get("default_unit")) or "raw"
     allowed_units = {_safe_str(v) for v in (unit_rules.get("allowed_units") or []) if _safe_str(v)}
-    parsed_unit = _extract_unit_from_source_metric(source_metric_name)
     mapped_unit = _safe_str(metric_units.get(metric_name))
-    unit = parsed_unit or mapped_unit or default_unit
+    parsed_unit = _extract_unit_from_source_metric(source_metric_name)
+    unit = mapped_unit or parsed_unit or default_unit
 
     if allowed_units and unit not in allowed_units:
         return unit, False
@@ -244,6 +403,9 @@ def standardize_sheet(
     if not contract or contract.status != "ready":
         return pd.DataFrame()
 
+    if sheet_name == "权益-全球股指" and _looks_like_snapshot_matrix(raw_df, contract):
+        return _standardize_snapshot_matrix(sheet_name, raw_df, contract, source_file_name)
+
     header_row = _find_header_row(raw_df)
     if header_row is None:
         return pd.DataFrame()
@@ -255,6 +417,11 @@ def standardize_sheet(
 
     cn_row_idx = header_row - 1 if header_row - 1 >= 0 else header_row
     cn_headers = [_safe_str(v) for v in raw_df.iloc[cn_row_idx].tolist()]
+    below_row_idx = header_row + 1 if header_row + 1 < len(raw_df) else header_row
+    below_headers = [_safe_str(v) for v in raw_df.iloc[below_row_idx].tolist()]
+    upper_row_idx = header_row - 2 if header_row - 2 >= 0 else header_row
+    upper_headers = [_safe_str(v) for v in raw_df.iloc[upper_row_idx].tolist()]
+    upper_is_context = upper_row_idx != header_row
     data = raw_df.iloc[header_row + DATA_START_OFFSET :].reset_index(drop=True)
 
     records: list[dict[str, Any]] = []
@@ -286,15 +453,36 @@ def standardize_sheet(
         allowed_metrics = set(contract.value_fields or [])
         for col_idx, metric_col in enumerate(block.columns[metric_start_idx:], start=metric_start_idx):
             metric_base = _safe_str(metric_col)
-            if not metric_base or metric_base.lower().startswith("unnamed"):
-                continue
-            if allowed_metrics and metric_base not in allowed_metrics:
+            raw_idx = start + col_idx
+            source_metric_name = cn_headers[raw_idx] if raw_idx < len(cn_headers) else ""
+            below_metric_name = below_headers[raw_idx] if raw_idx < len(below_headers) else ""
+            upper_metric_name = upper_headers[raw_idx] if raw_idx < len(upper_headers) else ""
+            metric_name = _choose_metric_name(
+                metric_base,
+                source_metric_name,
+                below_metric_name,
+                upper_metric_name,
+                allowed_metrics,
+            )
+            if not metric_name:
                 continue
 
             value_series = _normalize_numeric(block[metric_col])
-            raw_idx = start + col_idx
-            source_metric_name = cn_headers[raw_idx] if raw_idx < len(cn_headers) else ""
-            unit, unit_ok = _resolve_unit(contract, metric_base, source_metric_name)
+            if not value_series.notna().any():
+                continue
+            if upper_is_context and (metric_name == upper_metric_name or (
+                len(allowed_metrics) == 1
+                and metric_base != metric_name
+                and source_metric_name != metric_name
+                and below_metric_name != metric_name
+            )):
+                unit_source = _unit_source_name(upper_metric_name, metric_name)
+            else:
+                unit_source = _unit_source_name(source_metric_name, below_metric_name, upper_metric_name, metric_name)
+            unit, unit_ok = _resolve_unit(contract, metric_name, unit_source)
+            column_asset_name = _candidate_column_asset(metric_base, source_metric_name, upper_metric_name, metric_name)
+            if len(_as_list(contract.asset_field)) > 1 and not ticker_col and not column_asset_name:
+                continue
 
             for idx in block.index:
                 record = {
@@ -304,7 +492,7 @@ def standardize_sheet(
                     "asset_key": "",
                     "series_key": "",
                     "ticker": _safe_str(block.loc[idx, ticker_col]) if ticker_col else "",
-                    "metric_name": metric_base,
+                    "metric_name": metric_name,
                     "value": value_series.loc[idx],
                     "unit": unit,
                     "source_file": source_file_name,
@@ -318,9 +506,9 @@ def standardize_sheet(
                     "validation_note": "",
                 }
 
-                asset_name = _resolve_asset_name(block, idx, contract, ticker_col)
+                asset_name = _resolve_asset_name(block, idx, contract, ticker_col, column_asset_name=column_asset_name)
                 asset_key = _build_asset_key(contract, asset_name)
-                series_key = f"{asset_key}::{metric_base}" if asset_key else ""
+                series_key = f"{asset_key}::{metric_name}" if asset_key else ""
                 record["asset_name"] = asset_name
                 record["asset_key"] = asset_key
                 record["series_key"] = series_key

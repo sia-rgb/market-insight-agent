@@ -28,7 +28,7 @@ sheet_contracts:
       on_failure: invalid_date
     asset_key_rule:
       type: prefer_columns
-      columns: [Code, Name]
+      columns: [Name, Code]
       fallback: sheet_name
 
   - sheet: 权益-A股交易量
@@ -36,7 +36,7 @@ sheet_contracts:
     asset_class: equity
     time_field: Date
     asset_field: A股市场
-    value_fields: [A股总成交额（亿元）]
+    value_fields: [上证指数, 深证成指, A股总成交额（亿元）]
     unit_rules:
       default_unit: 亿元
       metric_units: {}
@@ -55,11 +55,11 @@ sheet_contracts:
     asset_class: equity
     time_field: date
     asset_field: 南向
-    value_fields: [南向-成交净买入(亿元,港元)]
+    value_fields: ["沪股通-成交净买入(亿元,人民币)", "港股通-成交净买入(亿元,港元)", "深股通-成交净买入(亿元,人民币)", "南向-成交净买入(亿元,港元)"]
     unit_rules:
       default_unit: 亿元
       metric_units: {}
-      allowed_units: [亿元, 港元]
+      allowed_units: [亿元, 港元, "亿元,人民币", "亿元,港元"]
     date_parse_rule:
       source_fields_priority: [date, Date]
       formats: ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]
@@ -74,11 +74,14 @@ sheet_contracts:
     asset_class: equity
     time_field: end_date
     asset_field: A股两融
-    value_fields: [融资余额, 融券余额, 融资融券余额(沪深两市), 两融余额占A股流通市值(%)]
+    value_fields: [买入额占A股成交额(%), 融资融券余额(沪深两市), 两融余额占A股流通市值(%), 融资余额, 融券余额, 两融交易额, 两融交易额占A股成交额(%), 融资买入额, 融资卖出额]
     unit_rules:
       default_unit: raw
       metric_units:
+        买入额占A股成交额(%): "%"
+        融资融券余额(沪深两市): raw
         两融余额占A股流通市值(%): "%"
+        两融交易额占A股成交额(%): "%"
       allowed_units: [亿元, "%", raw]
     date_parse_rule:
       source_fields_priority: [end_date, 截止日, date]
@@ -96,9 +99,9 @@ sheet_contracts:
     asset_field: VIX.GI
     value_fields: [close]
     unit_rules:
-      default_unit: raw
+      default_unit: "%"
       metric_units: {}
-      allowed_units: [raw]
+      allowed_units: ["%"]
     date_parse_rule:
       source_fields_priority: [Date, date]
       formats: ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]
@@ -115,9 +118,9 @@ sheet_contracts:
     asset_field: 沪深300
     value_fields: [largeBillInflowMoney, middleBillInflowMoney, smallBillInflowMoney, 散户交易金额]
     unit_rules:
-      default_unit: 亿元
+      default_unit: 万元
       metric_units: {}
-      allowed_units: [亿元]
+      allowed_units: [万元, 亿元]
     date_parse_rule:
       source_fields_priority: [date, Date]
       formats: ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]
@@ -156,7 +159,7 @@ sheet_contracts:
     unit_rules:
       default_unit: "%"
       metric_units: {}
-      allowed_units: ["%"]
+      allowed_units: ["%", raw]
     date_parse_rule:
       source_fields_priority: [Date, date]
       formats: ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]
@@ -213,7 +216,7 @@ sheet_contracts:
     unit_rules:
       default_unit: raw
       metric_units: {}
-      allowed_units: [raw]
+      allowed_units: [raw, 元 / 美元]
     date_parse_rule:
       source_fields_priority: [Date, date]
       formats: ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]
@@ -231,9 +234,9 @@ sheet_contracts:
     asset_field: S5111905
     value_fields: [EDBclose]
     unit_rules:
-      default_unit: raw
+      default_unit: 美元 / 桶
       metric_units: {}
-      allowed_units: [raw]
+      allowed_units: [raw, 美元 / 桶]
     date_parse_rule:
       source_fields_priority: [Date, date]
       formats: ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]
@@ -250,9 +253,9 @@ sheet_contracts:
     asset_field: S0031645
     value_fields: [EDBclose]
     unit_rules:
-      default_unit: raw
+      default_unit: 美元 / 盎司
       metric_units: {}
-      allowed_units: [raw]
+      allowed_units: [raw, 美元 / 盎司]
     date_parse_rule:
       source_fields_priority: [Date, date]
       formats: ["%Y-%m-%d", "%Y/%m/%d", "%Y%m%d"]

@@ -1,18 +1,17 @@
-
-
-# Assets Insight Agent
+# Market Dashboard
 
 ## 1. 项目概览 (Project Overview)
 
-**目标**：将金融市场多资产市场高频动态数据转换为结构化异动洞察与周报页面。
+**目标**：读取每日更新的金融市场 Excel 文件，提取各工作表中的指标与单位，生成面向网页看板的数据文件，并以深色金融终端风格展示每日变化。
 **输入 (Input)**：市场数据 `.xlsx` 文件。
-**输出 (Output)**：结构化洞察 `.json` 文件与周报 `.docx` 文件。
+**输出 (Output)**：`frontend/data/dashboard_data.json` 与静态网页看板。
 **当前状态**：MVP。
 
 ### 架构分层
-1.  **Data 层**：负责确定性计算与规则判定。
-2.  **Agent 层**：负责优先级排序、审慎解释与外部证据补充。
-3.  **Render 层**：负责输出 Word 结果。
+1. **Data 层**：负责 Excel 读取、标准化与事实数据输出。
+2. **Dashboard Data 层**：负责基于标准化数据计算日度变化字段。
+3. **Frontend 层**：负责静态网页展示，只消费 `dashboard_data.json`。
+4. **Legacy Agent 层**：代码保留，默认停用；仅在显式调用旧命令时运行。
 
 ### 技术架构图
 ```text
@@ -20,38 +19,22 @@ Input (market-data-auto.xlsx)
     │
     ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  Data & Analytics 层 (确定性计算，无外部检索)                  │
-│  ├─ data_ingest.py         → standardized_market_data.csv   │
-│  ├─ data_weekly_calc.py    → weekly_metrics.csv             │
-│  │                          → weekly_changes.csv             │
-│  └─ data_anomaly_detect.py → anomaly_candidates.csv         │
+│  Data 层                                                     │
+│  └─ data_ingest.py → standardized_market_data.csv            │
 └─────────────────────────────────────────────────────────────┘
     │
     ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  Agent 层 (解释与归纳，允许外部检索)                          │
-│  ├─ agent_context.py      → 构造 LLM Context                │
-│  ├─ agent_llm.py          → ReAct 循环生成三要点洞察          │
-│  ├─ agent_prompt.py       → System Prompt 构建              │
-│  ├─ agent_evidence.py     → 引用去重与结构化                 │
-│  ├─ agent_tools.py        → Tavily 新闻搜索                  │
-│  └─ agent_insight_generate.py → 编排聚合 report_insights     │
+│  Dashboard Data 层                                           │
+│  └─ dashboard_data.py → frontend/data/dashboard_data.json     │
 └─────────────────────────────────────────────────────────────┘
     │
     ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  Render 层 (纯展示，只消费 report_insights)                  │
-│  └─ report_render.py      → weekly_report.docx              │
-└─────────────────────────────────────────────────────────────┘
-    │
-    ▼
-┌─────────────────────────────────────────────────────────────┐
-│  基础设施                                                   │
-│  ├─ main.py                → CLI 入口 & 流水线编排            │
-│  ├─ pipeline_contract.py   → Pipeline 配置加载                │
-│  ├─ report_schema_contracts.py → JSON Schema 验证            │
-│  ├─ data_rules_config.py   → Rules & Metric Mapping 加载      │
-│  └─ console_utf8.py        → Windows UTF-8 控制台设置         │
+│  Frontend 层                                                 │
+│  ├─ frontend/index.html                                      │
+│  ├─ frontend/styles.css                                      │
+│  └─ frontend/app.js                                          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -64,14 +47,24 @@ Input (market-data-auto.xlsx)
 pip install -r requirements.txt
 ```
 
-### 2) 最短服务启动路径
+### 2) 生成看板数据
+```bash
+python -m src.main run_all --input market-data-auto.xlsx
+```
+
+等价的显式命令：
+```bash
+python -m src.main run_dashboard --input market-data-auto.xlsx
+```
+
+### 3) 启动网页服务
 ```bash
 python -m http.server 8000 -d frontend
 ```
 
-### 3) 最短命令行路径
-```bash
-python -m src.main run_all --input market-data-auto.xlsx
+浏览器访问：
+```text
+http://127.0.0.1:8000
 ```
 
 ---
@@ -80,19 +73,53 @@ python -m src.main run_all --input market-data-auto.xlsx
 
 | 主题 | 唯一真源 |
 | :--- | :--- |
-| 项目范围、标准化输出与报告展示约束 | `config/project_contract.yaml` |
-| 双工作流边界与执行顺序 | `config/pipeline_contract.yaml` |
+| 项目范围、标准化输出与看板展示约束 | `config/project_contract.yaml` |
+| 默认执行链路与 Agent 停用边界 | `config/pipeline_contract.yaml` |
 | Ingest 配置真源说明 | `config/sheet_contracts.yaml` |
-| 异常规则参数与映射 | `config/rules_config.yaml` + `config/metric_rule_mapping.yaml` |
-| Agent 指标语义词典 | `config/indicator_dictionary.yaml` |
-| Agent Judgment 行为约束 | `config/project_contract.yaml` |
-| 输出对象契约 | `schemas/report_insights.schema.json` |
+| 日度看板数据构建 | `src/dashboard_data.py` |
+| 网页展示入口 | `frontend/index.html` |
 | 模块装配与 CLI | `docs/dev/implementation_spec.md` |
 | 运维与排障 | `docs/ops/runbook_ops.md` |
 
+### 文档地图
+
+| 文档 | 用途 |
+| :--- | :--- |
+| `config/project_contract.yaml` | 定义当前项目范围、输出对象与禁止行为。 |
+| `config/pipeline_contract.yaml` | 定义默认 `run_all` 步骤。 |
+| `config/sheet_contracts.yaml` | 定义每个 Excel 工作表的指标字段和单位规则。 |
+| `docs/dev/implementation_spec.md` | 定义模块映射、CLI 与开发顺序。 |
+| `docs/ops/runbook_ops.md` | 定义运行与排障记录要求。 |
+
 ---
 
-## 4. 资产类型
+## 4. 当前默认链路
+
+```text
+market-data-auto.xlsx
+  → artifacts/standardized_market_data.csv
+  → frontend/data/dashboard_data.json
+  → frontend 静态看板
+```
+
+默认链路不执行：
+- Agent Judgment。
+- LLM 调用。
+- Tavily 或其他外部检索。
+- 周度异常判断。
+- Word 周报渲染。
+
+旧 Agent 相关命令仍保留，用于显式兼容：
+```bash
+python -m src.main run_weekly_calc --input artifacts/standardized_market_data.csv --out-dir artifacts
+python -m src.main run_anomaly_detect --input artifacts/weekly_changes.csv --out artifacts/anomaly_candidates.csv
+python -m src.main run_insight_generate --changes artifacts/weekly_changes.csv --candidates artifacts/anomaly_candidates.csv --out artifacts/report_insights.json --no-enable-external-search
+python -m src.main run_render_report --insights artifacts/report_insights.json --docx outputs/weekly_report.docx
+```
+
+---
+
+## 5. 资产类型
 
 **数据频率**：日更
 
@@ -112,41 +139,3 @@ python -m src.main run_all --input market-data-auto.xlsx
 | **大宗商品** | 石油价格 | EDBclose |
 | **大宗商品** | 黄金价格 | EDBclose |
 | **衍生品** | 50ETF期权 | 日成交量、日认购成交量、日认沽成交量、日认沽/认购、日持仓量、日认购持仓量、日认沽持仓量 |
-
----
-
-## 5. 资产异动判断逻辑
-
-当前启用 5 类异常规则：
-
-### 1) 历史阈值类 (Adaptive Historical Threshold)
-基于历史分布的动态阈值判断：
-- 周度涨跌幅 > 过去 52 周 95 分位。
-- 金额 / 成交量 / 持仓量变化 > 过去 52 周 90 分位。
-- **特点**：自适应市场环境，对不同资产更公平。
-
-### 2) Fallback 固定阈值类 (Fallback Threshold)
-当历史样本不足时使用：
-- 涨跌幅绝对值 ≥ 5%。
-- 比率类指标变化 ≥ 0.2。
-- 固收收益率变化 ≥ 0.20 (20bp)。
-- **特点**：保底机制，防止“无历史 → 无异常”。
-
-### 3) Robust Z-Score 类
-衡量当前变化相对历史分布的异常程度：
-- 使用中位数 (Median) 和 MAD (Median Absolute Deviation)。
-- 判定条件：偏离 ≥ 3。
-- **特点**：抗极端值（比标准差更稳健），捕捉“结构性异常”。
-
-### 4) 横向排名类 (Cross-sectional Ranking)
-基于当期横截面排序：
-- 全市场波动前 10。
-- 同资产类别波动前 3。
-- **特点**：捕捉“相对最异常”，不依赖历史。
-
-### 5) 分位类 (Percentile-based)
-基于分位数判断：
-- 历史分位 ≥ 95%。
-- 同类资产横截面分位 ≥ 95%。
-- 且同类样本数 ≥ 8。
-- **特点**：强调极端位置，兼顾历史与横向比较。

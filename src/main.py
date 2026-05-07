@@ -12,6 +12,7 @@ import pandas as pd
 from .data_anomaly_detect import build_anomaly_candidates
 from .console_utf8 import setup_console_utf8
 from .data_ingest import build_standardized_market_data
+from .dashboard_data import build_dashboard_payload
 from .agent_insight_generate import build_report_insights
 from .pipeline_contract import get_artifact_filenames, get_pipeline_step_names, load_pipeline_contract
 from .report_render import write_docx_report
@@ -155,12 +156,43 @@ def run_render_report(args: argparse.Namespace) -> None:
     write_docx_report(insights, args.docx)
 
 
+def run_dashboard_data(args: argparse.Namespace) -> None:
+    standardized = _load_standardized_input(args.input)
+    payload = build_dashboard_payload(
+        standardized,
+        latest_date=getattr(args, "latest_date", None),
+        top_n=getattr(args, "top_n", 10),
+    )
+    _ensure_parent(args.out)
+    with open(args.out, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2, default=str)
+
+
+def run_dashboard(args: argparse.Namespace) -> None:
+    artifact_dir = Path(getattr(args, "artifact_dir", "artifacts"))
+    frontend_dir = Path(getattr(args, "frontend_dir", "frontend"))
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    dashboard_out = frontend_dir / "data" / "dashboard_data.json"
+    standardized = artifact_dir / "standardized_market_data.csv"
+
+    run_ingest(argparse.Namespace(input=args.input, mapping=args.mapping, out=str(standardized)))
+    run_dashboard_data(
+        argparse.Namespace(
+            input=str(standardized),
+            out=str(dashboard_out),
+            latest_date=getattr(args, "latest_date", None),
+            top_n=getattr(args, "top_n", 10),
+        )
+    )
+
+
 def run_all(args: argparse.Namespace) -> None:
     pipeline_contract = load_pipeline_contract(args.pipeline_contract)
     pipeline_steps = get_pipeline_step_names(pipeline_contract)
 
     artifact_dir = Path(args.artifact_dir)
     output_dir = Path(args.output_dir)
+    frontend_dir = Path(getattr(args, "frontend_dir", "frontend"))
     artifact_dir.mkdir(parents=True, exist_ok=True)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -171,6 +203,7 @@ def run_all(args: argparse.Namespace) -> None:
     anomaly_candidates = artifact_dir / filenames.get("anomaly_candidates", "anomaly_candidates.csv")
     insights_json = artifact_dir / filenames.get("report_insights", "report_insights.json")
     docx_out = output_dir / filenames.get("weekly_report", "weekly_report.docx")
+    dashboard_json = frontend_dir / "data" / filenames.get("dashboard_data", "dashboard_data.json")
 
     step_handlers: dict[str, tuple[Any, argparse.Namespace]] = {
         "ingest_standardize": (
@@ -217,6 +250,15 @@ def run_all(args: argparse.Namespace) -> None:
                 docx=str(docx_out),
             ),
         ),
+        "build_dashboard_data": (
+            run_dashboard_data,
+            argparse.Namespace(
+                input=str(standardized),
+                out=str(dashboard_json),
+                latest_date=getattr(args, "latest_date", None),
+                top_n=getattr(args, "top_n", 10),
+            ),
+        ),
     }
 
     unknown_steps = [step_name for step_name in pipeline_steps if step_name not in step_handlers]
@@ -242,7 +284,7 @@ def run_all(args: argparse.Namespace) -> None:
                 {
                     "run_id": run_id,
                     "run_date": run_date,
-                    "target_week_start": args.target_week_start or "",
+                    "target_week_start": getattr(args, "target_week_start", None) or "",
                     "target_week_end": "",
                     "step_name": step_name,
                     "status": status,
@@ -270,7 +312,7 @@ def run_all(args: argparse.Namespace) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Asset Insight Agent MVP pipeline")
+    parser = argparse.ArgumentParser(description="Market dashboard pipeline")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_ingest = sub.add_parser("run_ingest")
@@ -319,6 +361,22 @@ def build_parser() -> argparse.ArgumentParser:
     p_report.add_argument("--docx", required=True)
     p_report.set_defaults(func=run_render_report)
 
+    p_dashboard_data = sub.add_parser("run_dashboard_data")
+    p_dashboard_data.add_argument("--input", required=True)
+    p_dashboard_data.add_argument("--out", default="frontend/data/dashboard_data.json")
+    p_dashboard_data.add_argument("--latest-date", default=None)
+    p_dashboard_data.add_argument("--top-n", type=int, default=10)
+    p_dashboard_data.set_defaults(func=run_dashboard_data)
+
+    p_dashboard = sub.add_parser("run_dashboard")
+    p_dashboard.add_argument("--input", required=True)
+    p_dashboard.add_argument("--mapping", default="config/sheet_contracts.yaml")
+    p_dashboard.add_argument("--artifact-dir", default="artifacts")
+    p_dashboard.add_argument("--frontend-dir", default="frontend")
+    p_dashboard.add_argument("--latest-date", default=None)
+    p_dashboard.add_argument("--top-n", type=int, default=10)
+    p_dashboard.set_defaults(func=run_dashboard)
+
     p_all = sub.add_parser("run_all")
     p_all.add_argument("--input", required=True)
     p_all.add_argument("--mapping", default="config/sheet_contracts.yaml")
@@ -327,6 +385,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_all.add_argument("--pipeline-contract", default="config/pipeline_contract.yaml")
     p_all.add_argument("--artifact-dir", default="artifacts")
     p_all.add_argument("--output-dir", default="outputs")
+    p_all.add_argument("--frontend-dir", default="frontend")
+    p_all.add_argument("--latest-date", default=None)
     p_all.add_argument("--top-n", type=int, default=10)
     p_all.add_argument("--enable-external-search", action=argparse.BooleanOptionalAction, default=True)
     p_all.add_argument("--target-week-start", default=None)

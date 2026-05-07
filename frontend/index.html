@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>每日市场指标看板</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Market Dashboard</p>
+        <h1>每日市场指标看板</h1>
+      </div>
+      <div class="status-panel" aria-live="polite">
+        <span id="dataDate">数据日期 --</span>
+        <span id="generatedAt">生成时间 --</span>
+      </div>
+    </header>
+
+    <section class="toolbar" aria-label="筛选器">
+      <label class="field">
+        <span>日期</span>
+        <select id="dateSelect"></select>
+      </label>
+      <label class="field field-wide">
+        <span>工作表</span>
+        <select id="sheetSelect"></select>
+      </label>
+      <label class="field search-field">
+        <span>检索</span>
+        <input id="searchInput" type="search" autocomplete="off" placeholder="资产 / 指标">
+      </label>
+      <div id="classFilters" class="segmented" role="group" aria-label="资产类别"></div>
+    </section>
+
+    <main>
+      <section class="global-grid">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Global Indices</p>
+              <h2>全球主要股票指数一览</h2>
+              <p class="section-note">按周涨幅排序</p>
+            </div>
+          </div>
+          <div id="globalIndexList" class="index-list"></div>
+        </div>
+
+        <div class="panel panel-large">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Trend</p>
+              <h2>最近一年全球股指表现</h2>
+            </div>
+            <span class="panel-meta">基准重置为 100</span>
+          </div>
+          <canvas id="globalIndexCanvas" width="920" height="360" aria-label="全球股指基准表现图"></canvas>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Moves</p>
+            <h2>日度正向涨幅前十</h2>
+          </div>
+        </div>
+        <div id="moverList" class="mover-list"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Indicators</p>
+            <h2>指标卡片</h2>
+          </div>
+          <span id="recordCount" class="panel-meta"></span>
+        </div>
+        <div id="metricGrid" class="metric-grid"></div>
+      </section>
+
+      <section class="panel table-panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Details</p>
+            <h2>指标明细</h2>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>工作表</th>
+                <th>资产</th>
+                <th>指标</th>
+                <th>最新值</th>
+                <th>日变动</th>
+                <th>日变动率</th>
+              </tr>
+            </thead>
+            <tbody id="detailRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,4 +1,4 @@
-version: 1
+version: 2
 
 pipeline_contract:
   input:
@@ -6,24 +6,17 @@ pipeline_contract:
 
   intermediate_outputs:
     - standardized_market_data
-    - weekly_metrics
-    - weekly_changes
-    - anomaly_candidates
 
-  reporting_input:
-    - report_insights
+  dashboard_input:
+    - standardized_market_data
 
   outputs:
-    - report_insights
-    - weekly_report.docx
+    - dashboard_data
+    - frontend_static_dashboard
 
   artifact_filenames:
     standardized_market_data: standardized_market_data.csv
-    weekly_metrics: weekly_metrics.csv
-    weekly_changes: weekly_changes.csv
-    anomaly_candidates: anomaly_candidates.csv
-    report_insights: report_insights.json
-    weekly_report: weekly_report.docx
+    dashboard_data: dashboard_data.json
 
   steps:
     - step_name: ingest_standardize
@@ -32,50 +25,25 @@ pipeline_contract:
       output:
         - standardized_market_data
 
-    - step_name: build_weekly_metrics
+    - step_name: build_dashboard_data
       input:
         - standardized_market_data
       output:
-        - weekly_metrics
-
-    - step_name: build_weekly_changes
-      input:
-        - weekly_metrics
-      output:
-        - weekly_changes
-
-    - step_name: detect_anomalies
-      input:
-        - weekly_changes
-      output:
-        - anomaly_candidates
-
-    - step_name: generate_insights
-      input:
-        - anomaly_candidates
-        - weekly_changes
-      output:
-        - report_insights
-      runtime_defaults:
-        target_week_start: latest_completed_natural_week_if_omitted
-
-    - step_name: render_report
-      input:
-        - report_insights
-      output:
-        - weekly_report.docx
+        - dashboard_data
 
   layer_boundaries:
     data_analytics:
       - ingest_standardize
+    dashboard_data:
+      - build_dashboard_data
+    agent_legacy_disabled:
       - build_weekly_metrics
       - build_weekly_changes
       - detect_anomalies
-    agent:
       - generate_insights
-    reporting:
       - render_report
 
   hard_constraints:
-    - report_render.py must not read weekly_metrics or weekly_changes for inference or backfill.
-    - report_render.py must consume report_insights as the only content input.
+    - Default run_all must not execute generate_insights or external search.
+    - Dashboard rendering must consume dashboard_data.json and must not add inferred drivers.
+    - Data values from standardized_market_data must not be rewritten by dashboard rendering.

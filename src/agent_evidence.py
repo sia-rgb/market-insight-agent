@@ -118,7 +118,7 @@ def contains_forbidden_driver_terms(text: str) -> bool:
 def render_evidence_driver_text(evidence_items: list[dict[str, Any]], max_items: int = 2) -> str:
     usable = [x for x in evidence_items if str(x.get("evidence_grade", "")).lower() in {"confirmed", "plausible"}]
     if not usable:
-        return "内部数据已显示该指标本周触发异常变动；后续重点观察相关政策、资金面、市场评论与同类资产表现是否同步变化。"
+        return "外部背景线索有限，当前仍以内部数据异常为主观察。"
     parts: list[str] = []
     for item in usable[:max_items]:
         dt = str(item.get("published_at", "")).strip() or "日期不明"
