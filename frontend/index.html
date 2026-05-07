@@ -20,45 +20,70 @@
       </div>
     </header>
 
-    <section class="toolbar" aria-label="筛选器">
-      <label class="field">
-        <span>日期</span>
-        <select id="dateSelect"></select>
-      </label>
-      <label class="field field-wide">
-        <span>工作表</span>
-        <select id="sheetSelect"></select>
-      </label>
-      <label class="field search-field">
-        <span>检索</span>
-        <input id="searchInput" type="search" autocomplete="off" placeholder="资产 / 指标">
-      </label>
-      <div id="classFilters" class="segmented" role="group" aria-label="资产类别"></div>
-    </section>
-
     <main>
       <section class="global-grid">
-        <div class="panel">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">Global Indices</p>
-              <h2>全球主要股指一览</h2>
-              <p class="section-note">按周涨幅排序</p>
+        <div class="global-stack">
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Global Indices</p>
+                <h2>全球主要股指一览</h2>
+                <p class="section-note">按周涨幅排序</p>
+              </div>
             </div>
+            <div id="globalIndexList" class="index-list"></div>
           </div>
-          <div id="globalIndexList" class="index-list"></div>
+
+          <div class="panel vix-panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Volatility</p>
+                <h2>市场波动率指数</h2>
+                <p class="section-note">VIX指数</p>
+              </div>
+            </div>
+            <canvas id="vixCanvas" width="520" height="210" aria-label="VIX指数走势图"></canvas>
+          </div>
         </div>
 
-        <div class="panel panel-large">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">Trend</p>
-              <h2>2026年全球股指表现</h2>
-              <p class="chart-note">基准为 100</p>
+        <div class="right-stack">
+          <div class="panel panel-large">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Trend</p>
+                <h2>2026年全球股指表现</h2>
+                <p class="chart-note">基准为 100</p>
+              </div>
             </div>
+            <canvas id="globalIndexCanvas" width="920" height="360" aria-label="全球股指基准表现图"></canvas>
           </div>
-          <canvas id="globalIndexCanvas" width="920" height="360" aria-label="全球股指基准表现图"></canvas>
+
+          <div class="panel treasury-panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Rates</p>
+                <h2>美国 10 年期国债收益率 (%)</h2>
+              </div>
+            </div>
+            <canvas id="treasuryCanvas" width="920" height="220" aria-label="美国10年期国债收益率走势图"></canvas>
+          </div>
         </div>
+      </section>
+
+      <section class="toolbar" aria-label="筛选器">
+        <label class="field">
+          <span>日期</span>
+          <select id="dateSelect"></select>
+        </label>
+        <label class="field field-wide">
+          <span>工作表</span>
+          <select id="sheetSelect"></select>
+        </label>
+        <label class="field search-field">
+          <span>检索</span>
+          <input id="searchInput" type="search" autocomplete="off" placeholder="资产 / 指标">
+        </label>
+        <div id="classFilters" class="segmented" role="group" aria-label="资产类别"></div>
       </section>
 
       <section class="panel">

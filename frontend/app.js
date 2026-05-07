@@ -31,6 +31,8 @@ const els = {
   classFilters: document.querySelector("#classFilters"),
   globalIndexList: document.querySelector("#globalIndexList"),
   globalIndexCanvas: document.querySelector("#globalIndexCanvas"),
+  vixCanvas: document.querySelector("#vixCanvas"),
+  treasuryCanvas: document.querySelector("#treasuryCanvas"),
   moverList: document.querySelector("#moverList"),
   metricGrid: document.querySelector("#metricGrid"),
   recordCount: document.querySelector("#recordCount"),
@@ -292,6 +294,45 @@ function buildGlobalPerformanceSeries() {
     })
     .filter(Boolean)
     .slice(0, 8);
+}
+
+function vixSeries() {
+  return (state.payload?.series || []).find((series) => (
+    series.source_sheet === "权益-VIX"
+    && series.metric_name === "close"
+  )) || null;
+}
+
+function vixPoints() {
+  return [...(vixSeries()?.observations || [])]
+    .filter((item) => (
+      item.date
+      && item.date >= "2026-01-01"
+      && item.date <= state.selectedDate
+      && isNumber(item.value)
+    ))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((item) => ({ date: item.date, value: item.value }));
+}
+
+function treasurySeries() {
+  return (state.payload?.series || []).find((series) => (
+    series.source_sheet === "固收-债券收益率"
+    && series.asset_name === "美国:国债收益率:10年"
+    && series.metric_name === "EDBclose"
+  )) || null;
+}
+
+function treasuryPoints() {
+  return [...(treasurySeries()?.observations || [])]
+    .filter((item) => (
+      item.date
+      && item.date >= "2026-01-01"
+      && item.date <= state.selectedDate
+      && isNumber(item.value)
+    ))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((item) => ({ date: item.date, value: item.value }));
 }
 
 function filteredRecords() {
@@ -557,6 +598,163 @@ function drawGlobalPerformanceChart() {
   });
 }
 
+function drawVixChart() {
+  const canvas = els.vixCanvas;
+  const rect = canvas.getBoundingClientRect();
+  const ratio = window.devicePixelRatio || 1;
+  canvas.width = Math.max(260, rect.width) * ratio;
+  canvas.height = Math.max(160, rect.height) * ratio;
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+  const width = canvas.width / ratio;
+  const height = canvas.height / ratio;
+  const pad = { left: 38, right: 12, top: 14, bottom: 28 };
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = "#071421";
+  ctx.fillRect(0, 0, width, height);
+
+  const points = vixPoints();
+  if (!points.length) {
+    ctx.fillStyle = "#93a6bd";
+    ctx.font = "12px Segoe UI";
+    ctx.fillText("暂无VIX数据", pad.left, height / 2);
+    return;
+  }
+
+  const dates = points.map((point) => point.date);
+  const values = points.map((point) => point.value);
+  let min = Math.min(...values);
+  let max = Math.max(...values);
+  if (min === max) {
+    min -= 1;
+    max += 1;
+  }
+  min = Math.floor(min / 5) * 5;
+  max = Math.ceil(max / 5) * 5;
+
+  const plotW = width - pad.left - pad.right;
+  const plotH = height - pad.top - pad.bottom;
+  const x = (date) => {
+    const idx = dates.indexOf(date);
+    return pad.left + (idx / Math.max(1, dates.length - 1)) * plotW;
+  };
+  const y = (value) => pad.top + ((max - value) / (max - min)) * plotH;
+
+  ctx.strokeStyle = "rgba(147, 166, 189, 0.16)";
+  ctx.lineWidth = 1;
+  ctx.fillStyle = "#93a6bd";
+  ctx.font = "11px Segoe UI";
+  for (let i = 0; i <= 3; i += 1) {
+    const yy = pad.top + (i / 3) * plotH;
+    const label = max - ((max - min) * i) / 3;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, yy);
+    ctx.lineTo(width - pad.right, yy);
+    ctx.stroke();
+    ctx.fillText(formatNumber(label, 0), 8, yy + 4);
+  }
+
+  monthTicks(dates).forEach((tick, idx, ticks) => {
+    const xx = x(tick.date);
+    ctx.textAlign = idx === 0 ? "left" : idx === ticks.length - 1 ? "right" : "center";
+    ctx.fillText(tick.label, xx, height - 10);
+  });
+  ctx.textAlign = "left";
+
+  ctx.strokeStyle = "#f36d7a";
+  ctx.lineWidth = 1.25;
+  ctx.beginPath();
+  points.forEach((point, idx) => {
+    const xx = x(point.date);
+    const yy = y(point.value);
+    if (idx === 0) ctx.moveTo(xx, yy);
+    else ctx.lineTo(xx, yy);
+  });
+  ctx.stroke();
+}
+
+function drawLineChart(canvas, points, options) {
+  const rect = canvas.getBoundingClientRect();
+  const ratio = window.devicePixelRatio || 1;
+  canvas.width = Math.max(260, rect.width) * ratio;
+  canvas.height = Math.max(160, rect.height) * ratio;
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+  const width = canvas.width / ratio;
+  const height = canvas.height / ratio;
+  const pad = { left: 42, right: 14, top: 16, bottom: 30 };
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = "#071421";
+  ctx.fillRect(0, 0, width, height);
+
+  if (!points.length) {
+    ctx.fillStyle = "#93a6bd";
+    ctx.font = "12px Segoe UI";
+    ctx.fillText(options.emptyText, pad.left, height / 2);
+    return;
+  }
+
+  const dates = points.map((point) => point.date);
+  const values = points.map((point) => point.value);
+  let min = Math.min(...values);
+  let max = Math.max(...values);
+  if (min === max) {
+    min -= 1;
+    max += 1;
+  }
+  min = Math.floor(min * 10) / 10;
+  max = Math.ceil(max * 10) / 10;
+
+  const plotW = width - pad.left - pad.right;
+  const plotH = height - pad.top - pad.bottom;
+  const x = (date) => {
+    const idx = dates.indexOf(date);
+    return pad.left + (idx / Math.max(1, dates.length - 1)) * plotW;
+  };
+  const y = (value) => pad.top + ((max - value) / (max - min)) * plotH;
+
+  ctx.strokeStyle = "rgba(147, 166, 189, 0.16)";
+  ctx.lineWidth = 1;
+  ctx.fillStyle = "#93a6bd";
+  ctx.font = "11px Segoe UI";
+  for (let i = 0; i <= 3; i += 1) {
+    const yy = pad.top + (i / 3) * plotH;
+    const label = max - ((max - min) * i) / 3;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, yy);
+    ctx.lineTo(width - pad.right, yy);
+    ctx.stroke();
+    ctx.fillText(formatNumber(label, 2), 8, yy + 4);
+  }
+
+  monthTicks(dates).forEach((tick, idx, ticks) => {
+    const xx = x(tick.date);
+    ctx.textAlign = idx === 0 ? "left" : idx === ticks.length - 1 ? "right" : "center";
+    ctx.fillText(tick.label, xx, height - 10);
+  });
+  ctx.textAlign = "left";
+
+  ctx.strokeStyle = options.color;
+  ctx.lineWidth = 1.25;
+  ctx.beginPath();
+  points.forEach((point, idx) => {
+    const xx = x(point.date);
+    const yy = y(point.value);
+    if (idx === 0) ctx.moveTo(xx, yy);
+    else ctx.lineTo(xx, yy);
+  });
+  ctx.stroke();
+}
+
+function drawTreasuryChart() {
+  drawLineChart(els.treasuryCanvas, treasuryPoints(), {
+    color: "#46c5bb",
+    emptyText: "暂无美国10年期国债收益率数据",
+  });
+}
+
 function render() {
   if (!state.payload) return;
   setStatus();
@@ -564,6 +762,8 @@ function render() {
   const records = filteredRecords();
   renderGlobalIndexList();
   drawGlobalPerformanceChart();
+  drawVixChart();
+  drawTreasuryChart();
   renderMovers(records);
   renderMetricCards(records);
   renderTable(records);
@@ -580,6 +780,8 @@ async function init() {
   } catch (error) {
     els.moverList.innerHTML = `<div class="empty">数据加载失败：${escapeHtml(error.message)}</div>`;
     drawGlobalPerformanceChart();
+    drawVixChart();
+    drawTreasuryChart();
   }
 }
 
@@ -600,6 +802,8 @@ els.searchInput.addEventListener("input", (event) => {
 
 window.addEventListener("resize", () => {
   drawGlobalPerformanceChart();
+  drawVixChart();
+  drawTreasuryChart();
 });
 
 init();
