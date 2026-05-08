@@ -119,6 +119,12 @@ function formatRatioPct(value) {
   return formatPct(value * 100);
 }
 
+function formatRatioPctFixed(value, digits = 2) {
+  if (!isNumber(value)) return "--";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${formatNumberFixed(value * 100, digits)}%`;
+}
+
 function formatRatioPctPlain(value) {
   if (!isNumber(value)) return "--";
   return `${formatNumber(value * 100, 2)}%`;
@@ -508,13 +514,13 @@ function renderGlobalIndexList() {
         <strong>${escapeHtml(formatInteger(close))}</strong>
       </div>
       <div class="index-metric index-value-cell change ${directionClass(weekRecord)}">
-        <strong>${escapeHtml(formatRatioPct(week))}</strong>
+        <strong>${escapeHtml(formatRatioPctFixed(week, 2))}</strong>
       </div>
       <div class="index-metric index-value-cell change ${directionClass(monthRecord)}">
-        <strong>${escapeHtml(formatRatioPct(month))}</strong>
+        <strong>${escapeHtml(formatRatioPctFixed(month, 2))}</strong>
       </div>
       <div class="index-metric index-value-cell change ${directionClass(ytdRecord)}">
-        <strong>${escapeHtml(formatRatioPct(ytd))}</strong>
+        <strong>${escapeHtml(formatRatioPctFixed(ytd, 2))}</strong>
       </div>
     </div>`;
   }).join("");
