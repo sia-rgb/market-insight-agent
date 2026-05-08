@@ -536,7 +536,7 @@ function buildGlobalPerformanceSeries() {
         .filter((item) => (
           item.date
           && item.date >= globalIndexPerformanceConfig.startDate
-          && item.date <= state.selectedDate
+          && item.date <= effectiveCloseDate()
           && isNumber(item.value)
         ))
         .sort((a, b) => a.date.localeCompare(b.date));
