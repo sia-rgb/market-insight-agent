@@ -374,6 +374,12 @@ function formatDisplayDate(dateText) {
   return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
 }
 
+function todayDateString() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Shanghai",
+  }).format(new Date());
+}
+
 function previousAvailableDate(date) {
   const dates = [...(state.payload?.dates || [])]
     .filter((item) => item && item < date)
@@ -593,10 +599,9 @@ function filteredRecords() {
 }
 
 function setStatus() {
-  const payload = state.payload;
-  els.dataDate.textContent = `数据日期 ${formatDisplayDate(effectiveCloseDate())}`;
-  const generatedDate = payload?.generated_at ? payload.generated_at.slice(0, 10) : "";
-  els.generatedAt.textContent = `生成日期 ${formatDisplayDate(generatedDate)}`;
+  const refreshDate = todayDateString();
+  els.generatedAt.textContent = `生成日期 ${formatDisplayDate(refreshDate)}`;
+  els.dataDate.textContent = `数据日期 ${formatDisplayDate(previousAvailableDate(refreshDate))}`;
 }
 
 function populateControls() {
