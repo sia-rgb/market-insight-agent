@@ -474,8 +474,8 @@ canvas {
 .mover-item {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  padding: 11px 0;
+  gap: 14px;
+  padding: 14px 0;
   border-bottom: 1px solid rgba(40, 65, 93, 0.72);
 }
 
@@ -494,13 +494,18 @@ canvas {
   overflow-wrap: anywhere;
   color: var(--white-soft);
   font-size: 14px;
-  line-height: 1.35;
+  line-height: 1.45;
 }
 
-.mover-item span {
+.mover-item .metric-main {
+  line-height: 1.4;
+}
+
+.mover-item .metric-note {
   color: var(--muted);
   font-size: 12px;
-  line-height: 1.35;
+  line-height: 1.38;
+  margin-top: 2px;
 }
 
 .change {
