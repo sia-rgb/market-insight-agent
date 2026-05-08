@@ -3,20 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>战略发展部·宏观市场核心指标看板</title>
+  <title>2026 年宏观市场核心指标看板</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="vendor/html2canvas.min.js"></script>
   <script src="app.js" defer></script>
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
       <div class="brand-block">
-        <h1>战略发展部·宏观市场核心指标看板</h1>
-        <p class="dashboard-subtitle">全市场权益·资金·外汇·衍生品每日监测</p>
+        <h1>2026 年宏观市场核心指标看板</h1>
+        <p class="dashboard-subtitle">全市场 权益/固收/衍生品/外汇/商品等资产 每日监测</p>
       </div>
       <div class="status-panel" aria-live="polite">
+        <span class="source-line">来源：战略发展部</span>
         <span id="dataDate">数据日期 --</span>
         <span id="generatedAt">生成日期 --</span>
+        <button id="exportLongImage" class="export-long-image" type="button">导出为长图</button>
       </div>
     </header>
 

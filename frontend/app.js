@@ -51,6 +51,7 @@ const els = {
   treasuryCanvas: document.querySelector("#treasuryCanvas"),
   moverList: document.querySelector("#moverList"),
   detailRows: document.querySelector("#detailRows"),
+  exportLongImage: document.querySelector("#exportLongImage"),
 };
 
 function escapeHtml(value) {
@@ -1015,6 +1016,37 @@ function render() {
   renderTable(records);
 }
 
+async function exportLongImage() {
+  if (!window.html2canvas) {
+    window.alert("导出组件未加载，请刷新页面后重试。");
+    return;
+  }
+
+  const docEl = document.documentElement;
+  const body = document.body;
+  const width = Math.max(docEl.scrollWidth, body.scrollWidth, docEl.clientWidth);
+  const height = Math.max(docEl.scrollHeight, body.scrollHeight, docEl.clientHeight);
+
+  const canvas = await window.html2canvas(body, {
+    backgroundColor: "#06111f",
+    scale: 1,
+    useCORS: true,
+    allowTaint: true,
+    logging: false,
+    width,
+    height,
+    windowWidth: docEl.clientWidth,
+    windowHeight: docEl.clientHeight,
+    scrollX: 0,
+    scrollY: 0,
+  });
+
+  const link = document.createElement("a");
+  link.download = `宏观市场核心指标看板-${state.selectedDate || "export"}.png`;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
 async function init() {
   try {
     const response = await fetch("data/dashboard_data.json", { cache: "no-store" });
@@ -1034,6 +1066,12 @@ async function init() {
 els.dateSelect.addEventListener("change", (event) => {
   state.selectedDate = event.target.value;
   render();
+});
+
+els.exportLongImage.addEventListener("click", () => {
+  exportLongImage().catch((error) => {
+    window.alert(`导出失败：${error.message}`);
+  });
 });
 
 window.addEventListener("resize", () => {
