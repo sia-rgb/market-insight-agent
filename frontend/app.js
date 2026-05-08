@@ -452,6 +452,7 @@ function latestObservation(series) {
 
 function globalIndexRows() {
   const byAsset = new Map();
+  const referenceDate = effectiveCloseDate();
   globalIndexSeries().forEach((series) => {
     const key = series.asset_key || series.asset_name || series.series_key;
     if (!byAsset.has(key)) {
@@ -462,9 +463,7 @@ function globalIndexRows() {
         metrics: {},
       });
     }
-    const observation = series.metric_name === "2026年至今"
-      ? latestObservation(series)
-      : latestObservationBefore(series, state.selectedDate);
+    const observation = latestObservationBefore(series, referenceDate);
     if (observation) {
       byAsset.get(key).metrics[series.metric_name] = {
         value: observation.value,
@@ -492,7 +491,7 @@ function renderGlobalIndexList() {
 
   const header = `<div class="index-row index-head">
     <div class="index-name"><strong>指数名称</strong></div>
-    <div class="index-metric"><span>收盘价</span></div>
+    <div class="index-metric"><span>最新收盘价</span></div>
     <div class="index-metric"><span>周变动</span></div>
     <div class="index-metric"><span>月变动</span></div>
     <div class="index-metric"><span>YTD变动</span></div>
