@@ -290,7 +290,7 @@ function splitMetricDetailText(record) {
   };
 }
 
-const detailGroupOrder = ["权益", "资金面", "外汇", "衍生品", "固收", "商品"];
+const detailGroupOrder = ["权益", "资金面", "固收", "衍生品", "外汇", "商品"];
 
 function detailGroupLabel(record) {
   const sheet = String(record?.source_sheet || "").trim();
