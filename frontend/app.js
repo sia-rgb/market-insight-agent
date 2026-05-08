@@ -648,10 +648,14 @@ function renderMovers(records) {
     if (!items.length) return `<div class="empty mover-empty">${escapeHtml(emptyText)}</div>`;
     return items.map((record) => {
       const title = titleLine(record);
+      const metricText = splitMetricDetailText(record);
+      const metricHtml = metricText.note
+        ? `<div class="metric-cell"><div class="metric-main">${escapeHtml(metricText.main)}</div><div class="metric-note">${escapeHtml(metricText.note)}</div></div>`
+        : `<div class="metric-cell"><div class="metric-main">${escapeHtml(metricText.main)}</div></div>`;
       return `<div class="mover-item">
         <div>
           <strong>${escapeHtml(title)}</strong>
-          <span>${escapeHtml(labelMetricBrief(record.metric_name))}</span>
+          ${metricHtml}
         </div>
         <div class="change ${signedClass(record.daily_pct_change)}">${signedMark(record.daily_pct_change)} ${formatPct(record.daily_pct_change)}</div>
       </div>`;
