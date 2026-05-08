@@ -50,7 +50,7 @@ select {
 
 .topbar {
   position: relative;
-  min-height: 194px;
+  min-height: 206px;
   margin-bottom: 28px;
   padding: 18px 220px 22px;
 }
@@ -103,7 +103,7 @@ h2 {
 .status-panel {
   position: absolute;
   right: 0;
-  top: 112px;
+  top: 138px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -113,6 +113,25 @@ h2 {
   line-height: 1.35;
   text-align: right;
   white-space: nowrap;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.status-row-dates {
+  gap: 12px;
+}
+
+.status-row-source {
+  margin-top: 0;
+}
+
+.status-row-button {
+  margin-top: 0;
 }
 
 .status-panel span {
@@ -661,13 +680,13 @@ tbody tr:not(.section-row) td {
 
 @media (max-width: 1180px) {
   .topbar {
-    min-height: 194px;
+    min-height: 206px;
     padding-right: 0;
     padding-left: 0;
   }
 
   .status-panel {
-    top: 112px;
+    top: 138px;
   }
 
   .toolbar,
@@ -684,13 +703,13 @@ tbody tr:not(.section-row) td {
   }
 
   .topbar {
-    min-height: 166px;
+    min-height: 178px;
     padding: 18px 0 44px;
   }
 
   .status-panel {
     right: 0;
-    top: 104px;
+    top: 130px;
   }
 
   h1 {

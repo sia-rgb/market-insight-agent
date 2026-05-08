@@ -42,7 +42,6 @@ const globalIndexSourceSheet = "权益-全球股指";
 
 const els = {
   dataDate: document.querySelector("#dataDate"),
-  generatedAt: document.querySelector("#generatedAt"),
   dateSelect: document.querySelector("#dateSelect"),
   classFilters: document.querySelector("#classFilters"),
   globalIndexList: document.querySelector("#globalIndexList"),
@@ -604,9 +603,7 @@ function filteredRecords() {
 }
 
 function setStatus() {
-  const refreshDate = todayDateString();
-  els.generatedAt.textContent = `生成日期 ${formatDisplayDate(refreshDate)}`;
-  els.dataDate.textContent = `数据日期 ${formatDisplayDate(previousAvailableDate(refreshDate))}`;
+  els.dataDate.textContent = `数据日期 ${formatDisplayDate(state.selectedDate)}`;
 }
 
 function populateControls() {
