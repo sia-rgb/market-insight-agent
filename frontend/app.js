@@ -646,15 +646,16 @@ function renderMovers(records) {
 
   const renderList = (items, emptyText) => {
     if (!items.length) return `<div class="empty mover-empty">${escapeHtml(emptyText)}</div>`;
-    return items.map((record) => {
+    return items.map((record, idx) => {
       const title = titleLine(record);
       const metricText = splitMetricDetailText(record);
       const metricHtml = metricText.note
         ? `<div class="metric-cell"><div class="metric-main">${escapeHtml(metricText.main)}</div><div class="metric-note">${escapeHtml(metricText.note)}</div></div>`
         : `<div class="metric-cell"><div class="metric-main">${escapeHtml(metricText.main)}</div></div>`;
-      return `<div class="mover-item">
+      const rankBadge = idx === 0 ? '<span class="mover-rank">★</span>' : '';
+      return `<div class="mover-item${idx === 0 ? " rank-leader" : ""}">
         <div>
-          <strong>${escapeHtml(title)}</strong>
+          <div class="mover-title">${rankBadge}<strong>${escapeHtml(title)}</strong></div>
           ${metricHtml}
         </div>
         <div class="change ${signedClass(record.daily_pct_change)}">${signedMark(record.daily_pct_change)} ${formatPct(record.daily_pct_change)}</div>
