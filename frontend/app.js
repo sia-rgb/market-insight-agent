@@ -554,7 +554,7 @@ function buildGlobalPerformanceSeries() {
       };
     })
     .filter(Boolean)
-    .slice(0, 8);
+    .slice(0, 9);
 }
 
 function vixSeries() {
