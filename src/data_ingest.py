@@ -12,6 +12,13 @@ import yaml
 from .utils_common import _safe_str, _as_list
 
 DATE_KEYS = {"date", "Date", "end_date", "截止日期", "截止日"}
+GLOBAL_INDEX_METRIC_ALIASES = {
+    "周变动": "最近一周",
+    "月变动": "最近1月",
+    "YTD变动": "2026年至今",
+    "YTD至今": "2026年至今",
+    "年初至今": "2026年至今",
+}
 VALIDATION_OK = "ok"
 HEADER_SCAN_MAX_ROWS = 30
 DATA_START_OFFSET = 2
@@ -92,12 +99,19 @@ def _choose_metric_name(
     below_metric_name: str,
     upper_metric_name: str,
     allowed_metrics: set[str],
+    metric_aliases: dict[str, str] | None = None,
 ) -> str:
+    aliases = metric_aliases or {}
+
+    def normalize(value: str) -> str:
+        text = _safe_str(value)
+        return aliases.get(text, text)
+
     candidates = [
-        _safe_str(metric_col),
-        _safe_str(source_metric_name),
-        _safe_str(below_metric_name),
-        _safe_str(upper_metric_name),
+        normalize(metric_col),
+        normalize(source_metric_name),
+        normalize(below_metric_name),
+        normalize(upper_metric_name),
     ]
     if allowed_metrics:
         for cand in candidates:
@@ -266,18 +280,20 @@ def _standardize_snapshot_matrix(
     raw_df: pd.DataFrame,
     contract: SheetContract,
     source_file_name: str,
+    metric_aliases: dict[str, str] | None = None,
 ) -> pd.DataFrame:
     header_row = None
     allowed_metrics = set(contract.value_fields or [])
+    aliases = metric_aliases or {}
     for i in range(min(HEADER_SCAN_MAX_ROWS, len(raw_df))):
-        row_vals = {_safe_str(v) for v in raw_df.iloc[i].tolist()}
+        row_vals = {aliases.get(_safe_str(v), _safe_str(v)) for v in raw_df.iloc[i].tolist()}
         if row_vals.intersection(allowed_metrics):
             header_row = i
             break
     if header_row is None:
         return pd.DataFrame()
 
-    headers = [_safe_str(v) for v in raw_df.iloc[header_row].tolist()]
+    headers = [aliases.get(_safe_str(v), _safe_str(v)) for v in raw_df.iloc[header_row].tolist()]
     date_row_idx = header_row - 1 if header_row - 1 >= 0 else header_row
     date_headers = raw_df.iloc[date_row_idx].tolist()
     data = raw_df.iloc[header_row + 1 :].reset_index(drop=True).dropna(how="all")
@@ -437,10 +453,15 @@ def _standardize_global_index_history(
     return out
 
 
-def _looks_like_snapshot_matrix(raw_df: pd.DataFrame, contract: SheetContract) -> bool:
+def _looks_like_snapshot_matrix(
+    raw_df: pd.DataFrame,
+    contract: SheetContract,
+    metric_aliases: dict[str, str] | None = None,
+) -> bool:
     allowed_metrics = set(contract.value_fields or [])
+    aliases = metric_aliases or {}
     for i in range(min(HEADER_SCAN_MAX_ROWS, len(raw_df))):
-        row_vals = {_safe_str(v) for v in raw_df.iloc[i].tolist()}
+        row_vals = {aliases.get(_safe_str(v), _safe_str(v)) for v in raw_df.iloc[i].tolist()}
         if {"Code", "Name"}.issubset(row_vals) and row_vals.intersection(allowed_metrics):
             return True
     return False
@@ -503,9 +524,11 @@ def standardize_sheet(
     if not contract or contract.status != "ready":
         return pd.DataFrame()
 
-    if sheet_name == "权益-全球股指" and _looks_like_snapshot_matrix(raw_df, contract):
+    global_index_aliases = GLOBAL_INDEX_METRIC_ALIASES if sheet_name == "权益-全球股指" else {}
+
+    if sheet_name == "权益-全球股指" and _looks_like_snapshot_matrix(raw_df, contract, metric_aliases=global_index_aliases):
         frames = [
-            _standardize_snapshot_matrix(sheet_name, raw_df, contract, source_file_name),
+            _standardize_snapshot_matrix(sheet_name, raw_df, contract, source_file_name, metric_aliases=global_index_aliases),
             _standardize_global_index_history(sheet_name, raw_df, contract, source_file_name),
         ]
         frames = [frame for frame in frames if not frame.empty]
@@ -568,6 +591,7 @@ def standardize_sheet(
                 below_metric_name,
                 upper_metric_name,
                 allowed_metrics,
+                metric_aliases=global_index_aliases,
             )
             if not metric_name:
                 continue
