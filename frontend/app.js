@@ -401,7 +401,7 @@ function isGlobalIndexSeries(series) {
 }
 
 function recordDateForSeries(series) {
-  return isGlobalIndexSeries(series) ? state.selectedDate : effectiveCloseDate();
+  return effectiveCloseDate();
 }
 
 function getRecordsForDate(date) {
@@ -435,6 +435,17 @@ function globalIndexSeries() {
   return (state.payload?.series || []).filter((series) => isGlobalIndexSeries(series));
 }
 
+function canonicalGlobalIndexMetric(metricName) {
+  const aliases = {
+    "周变动": "最近一周",
+    "月变动": "最近1月",
+    "YTD变动": "2026年至今",
+    "YTD至今": "2026年至今",
+    "年初至今": "2026年至今",
+  };
+  return aliases[metricName] || metricName;
+}
+
 function latestObservationBefore(series, date) {
   const observations = [...(series?.observations || [])]
     .filter((item) => item.date && item.date <= date && isNumber(item.value))
@@ -464,7 +475,7 @@ function globalIndexRows() {
     }
     const observation = latestObservationBefore(series, referenceDate);
     if (observation) {
-      byAsset.get(key).metrics[series.metric_name] = {
+      byAsset.get(key).metrics[canonicalGlobalIndexMetric(series.metric_name)] = {
         value: observation.value,
         date: observation.date,
         unit: series.unit,
