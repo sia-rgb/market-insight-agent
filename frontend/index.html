@@ -29,6 +29,14 @@
     </header>
 
     <main>
+      <section class="toolbar" aria-label="筛选器">
+        <label class="field">
+          <span>日期</span>
+          <select id="dateSelect"></select>
+        </label>
+        <div id="classFilters" class="segmented" role="group" aria-label="资产类别"></div>
+      </section>
+
       <section class="global-grid">
         <div class="global-stack">
           <div class="panel">
@@ -76,14 +84,6 @@
             <canvas id="treasuryCanvas" width="920" height="220" aria-label="美国10年期国债收益率走势图"></canvas>
           </div>
         </div>
-      </section>
-
-      <section class="toolbar" aria-label="筛选器">
-        <label class="field">
-          <span>日期</span>
-          <select id="dateSelect"></select>
-        </label>
-        <div id="classFilters" class="segmented" role="group" aria-label="资产类别"></div>
       </section>
 
       <section class="panel">
