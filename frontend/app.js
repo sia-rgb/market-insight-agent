@@ -614,7 +614,7 @@ function filteredRecords() {
 }
 
 function setStatus() {
-  els.dataDate.textContent = `数据日期 ${formatDisplayDate(state.selectedDate)}`;
+  els.dataDate.textContent = `数据日期 ${formatDisplayDate(effectiveCloseDate())}`;
 }
 
 function populateControls() {
@@ -643,11 +643,12 @@ function populateControls() {
 }
 
 function renderMovers(records) {
-  const gainers = records
+  const rankingRecords = records.filter((record) => record.source_sheet !== globalIndexSourceSheet);
+  const gainers = rankingRecords
     .filter((item) => isNumber(item.daily_pct_change) && item.daily_pct_change > 0)
     .sort((a, b) => b.daily_pct_change - a.daily_pct_change)
     .slice(0, 5);
-  const decliners = records
+  const decliners = rankingRecords
     .filter((item) => isNumber(item.daily_pct_change) && item.daily_pct_change < 0)
     .sort((a, b) => a.daily_pct_change - b.daily_pct_change)
     .slice(0, 5);

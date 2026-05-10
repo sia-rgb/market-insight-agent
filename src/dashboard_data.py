@@ -110,12 +110,13 @@ def _rank_records(df: pd.DataFrame, field: str, ascending: bool, top_n: int) -> 
 
 
 def _build_rankings(latest_df: pd.DataFrame, top_n: int) -> dict[str, list[dict[str, Any]]]:
-    abs_rank = latest_df.copy()
+    ranking_df = latest_df[latest_df["source_sheet"].astype(str) != GLOBAL_INDEX_SOURCE_SHEET].copy()
+    abs_rank = ranking_df.copy()
     if "daily_abs_change" in abs_rank.columns:
         abs_rank["abs_daily_abs_change"] = pd.to_numeric(abs_rank["daily_abs_change"], errors="coerce").abs()
     return {
-        "top_gain_pct": _rank_records(latest_df, "daily_pct_change", ascending=False, top_n=top_n),
-        "top_loss_pct": _rank_records(latest_df, "daily_pct_change", ascending=True, top_n=top_n),
+        "top_gain_pct": _rank_records(ranking_df, "daily_pct_change", ascending=False, top_n=top_n),
+        "top_loss_pct": _rank_records(ranking_df, "daily_pct_change", ascending=True, top_n=top_n),
         "top_abs_change": _rank_records(abs_rank, "abs_daily_abs_change", ascending=False, top_n=top_n),
     }
 
