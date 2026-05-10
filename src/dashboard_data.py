@@ -154,6 +154,16 @@ def _previous_available_date(df: pd.DataFrame, target_date: pd.Timestamp) -> pd.
     return pd.Timestamp(dates[-1]).normalize()
 
 
+def _is_weekday_series(series: pd.Series) -> pd.Series:
+    return pd.to_datetime(series, errors="coerce").dt.weekday < 5
+
+
+def _drop_global_index_weekends(df: pd.DataFrame) -> pd.DataFrame:
+    is_global_index = df["source_sheet"].astype(str) == GLOBAL_INDEX_SOURCE_SHEET
+    is_weekday = _is_weekday_series(df["date"])
+    return df[(~is_global_index) | is_weekday].copy()
+
+
 def _previous_global_index_close_date(daily: pd.DataFrame, target_date: pd.Timestamp) -> pd.Timestamp:
     global_close = daily[
         (daily["source_sheet"].astype(str) == GLOBAL_INDEX_SOURCE_SHEET)
@@ -247,6 +257,7 @@ def build_daily_dashboard_frame(standardized_data: pd.DataFrame) -> pd.DataFrame
     df["value"] = pd.to_numeric(df["value"], errors="coerce")
     df = df.dropna(subset=["date", "value"])
     df = df[df["series_key"].astype(str).str.strip() != ""].copy()
+    df = _drop_global_index_weekends(df)
     df = _append_global_index_change_metrics(df)
 
     for col in DISPLAY_COLUMNS:

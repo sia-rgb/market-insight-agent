@@ -526,13 +526,8 @@ def standardize_sheet(
 
     global_index_aliases = GLOBAL_INDEX_METRIC_ALIASES if sheet_name == "权益-全球股指" else {}
 
-    if sheet_name == "权益-全球股指" and _looks_like_snapshot_matrix(raw_df, contract, metric_aliases=global_index_aliases):
-        frames = [
-            _standardize_snapshot_matrix(sheet_name, raw_df, contract, source_file_name, metric_aliases=global_index_aliases),
-            _standardize_global_index_history(sheet_name, raw_df, contract, source_file_name),
-        ]
-        frames = [frame for frame in frames if not frame.empty]
-        return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    if sheet_name == "权益-全球股指":
+        return _standardize_global_index_history(sheet_name, raw_df, contract, source_file_name)
 
     header_row = _find_header_row(raw_df)
     if header_row is None:

@@ -386,14 +386,47 @@ function todayDateString() {
 }
 
 function previousAvailableDate(date) {
-  const dates = [...(state.payload?.dates || [])]
-    .filter((item) => item && item < date)
+  const dates = allObservationDates()
+    .filter((item) => item && item <= date)
     .sort();
   return dates.at(-1) || date;
 }
 
 function effectiveCloseDate() {
-  return state.payload?.effective_close_date || previousAvailableDate(state.selectedDate);
+  return state.selectedDate || latestTradingDateOnOrBefore(state.payload?.latest_date || todayDateString());
+}
+
+function tradingDates() {
+  return [...new Set(allSeries()
+    .filter((series) => (
+      series.source_sheet === globalIndexSourceSheet
+      && series.metric_name === globalIndexPerformanceConfig.metricName
+    ))
+    .flatMap((series) => series.observations || [])
+    .map((item) => item.date)
+    .filter((date) => date && isWeekdayDate(date)))].sort();
+}
+
+function latestTradingDateOnOrBefore(dateText) {
+  const dates = tradingDates().filter((date) => date <= dateText);
+  return dates.at(-1) || previousAvailableDate(dateText);
+}
+
+function allSeries() {
+  return state.payload?.series_all || state.payload?.series || [];
+}
+
+function allObservationDates() {
+  return [...new Set(allSeries().flatMap((series) => (
+    series.observations || []
+  ).map((item) => item.date).filter(Boolean)))];
+}
+
+function isWeekdayDate(dateText) {
+  const date = new Date(`${dateText}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return false;
+  const day = date.getDay();
+  return day !== 0 && day !== 6;
 }
 
 function isGlobalIndexSeries(series) {
@@ -405,11 +438,10 @@ function recordDateForSeries(series) {
 }
 
 function getRecordsForDate(date) {
-  const payload = state.payload;
-  if (!payload) return [];
-  return payload.series.flatMap((series) => {
+  if (!state.payload) return [];
+  return allSeries().flatMap((series) => {
     const targetDate = date || recordDateForSeries(series);
-    const observation = series.observations.find((item) => item.date === targetDate);
+    const observation = latestObservationBefore(series, targetDate);
     if (!observation) return [];
     return [{
       date: observation.date,
@@ -432,7 +464,7 @@ function getRecordsForDate(date) {
 }
 
 function globalIndexSeries() {
-  return (state.payload?.series || []).filter((series) => isGlobalIndexSeries(series));
+  return allSeries().filter((series) => isGlobalIndexSeries(series));
 }
 
 function canonicalGlobalIndexMetric(metricName) {
@@ -536,7 +568,7 @@ function renderGlobalIndexList() {
 }
 
 function buildGlobalPerformanceSeries() {
-  return (state.payload?.series || [])
+  return allSeries()
     .filter((series) => (
       series.source_sheet === globalIndexPerformanceConfig.sourceSheet
       && series.metric_name === globalIndexPerformanceConfig.metricName
@@ -568,7 +600,7 @@ function buildGlobalPerformanceSeries() {
 }
 
 function vixSeries() {
-  return (state.payload?.series || []).find((series) => (
+  return allSeries().find((series) => (
     series.source_sheet === "权益-VIX"
     && series.metric_name === "close"
   )) || null;
@@ -587,7 +619,7 @@ function vixPoints() {
 }
 
 function treasurySeries() {
-  return (state.payload?.series || []).find((series) => (
+  return allSeries().find((series) => (
     series.source_sheet === "固收-债券收益率"
     && series.asset_name === "美国:国债收益率:10年"
     && series.metric_name === "EDBclose"
@@ -618,14 +650,13 @@ function setStatus() {
 }
 
 function populateControls() {
-  const payload = state.payload;
-  const dates = [...(payload?.dates || [])].sort().reverse();
+  const dates = tradingDates().sort().reverse();
   els.dateSelect.innerHTML = dates.map((date) => (
     `<option value="${escapeHtml(date)}">${escapeHtml(date)}</option>`
   )).join("");
   els.dateSelect.value = state.selectedDate;
 
-  const availableClasses = new Set((payload?.series || []).map((item) => item.asset_class).filter(Boolean));
+  const availableClasses = new Set(allSeries().map((item) => item.asset_class).filter(Boolean));
   const classes = classOrder.filter((value) => availableClasses.has(value));
   els.classFilters.innerHTML = [
     { value: "all", label: "全部" },
@@ -1076,7 +1107,7 @@ async function init() {
     const response = await fetch("data/dashboard_data.json", { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     state.payload = await response.json();
-    state.selectedDate = state.payload.latest_date || state.payload.dates?.at(-1) || "";
+    state.selectedDate = latestTradingDateOnOrBefore(todayDateString());
     populateControls();
     render();
   } catch (error) {
