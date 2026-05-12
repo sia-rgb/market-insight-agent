@@ -41,7 +41,6 @@ const globalIndexPerformanceConfig = {
 const globalIndexSourceSheet = "权益-全球股指";
 
 const els = {
-  dataDate: document.querySelector("#dataDate"),
   dateSelect: document.querySelector("#dateSelect"),
   classFilters: document.querySelector("#classFilters"),
   globalIndexList: document.querySelector("#globalIndexList"),
@@ -666,10 +665,6 @@ function filteredRecords() {
   });
 }
 
-function setStatus() {
-  els.dataDate.textContent = `数据日期 ${formatDisplayDate(effectiveCloseDate())}`;
-}
-
 function populateControls() {
   const dates = tradingDates().sort().reverse();
   els.dateSelect.innerHTML = dates.map((date) => (
@@ -1095,7 +1090,6 @@ function drawTreasuryChart() {
 
 function render() {
   if (!state.payload) return;
-  setStatus();
   populateControls();
   const records = filteredRecords();
   renderGlobalIndexList();
