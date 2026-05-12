@@ -401,15 +401,8 @@ function todayDateString() {
   }).format(new Date());
 }
 
-function previousAvailableDate(date) {
-  const dates = allObservationDates()
-    .filter((item) => item && item <= date)
-    .sort();
-  return dates.at(-1) || date;
-}
-
 function effectiveCloseDate() {
-  return state.selectedDate || latestTradingDateOnOrBefore(state.payload?.latest_date || todayDateString());
+  return state.selectedDate || latestSelectableTradingDate();
 }
 
 function tradingDates() {
@@ -423,19 +416,17 @@ function tradingDates() {
     .filter((date) => date && isWeekdayDate(date)))].sort();
 }
 
-function latestTradingDateOnOrBefore(dateText) {
-  const dates = tradingDates().filter((date) => date <= dateText);
-  return dates.at(-1) || previousAvailableDate(dateText);
+function selectableTradingDates() {
+  const today = todayDateString();
+  return tradingDates().filter((date) => date < today);
+}
+
+function latestSelectableTradingDate() {
+  return selectableTradingDates().at(-1) || "";
 }
 
 function allSeries() {
   return state.payload?.series_all || state.payload?.series || [];
-}
-
-function allObservationDates() {
-  return [...new Set(allSeries().flatMap((series) => (
-    series.observations || []
-  ).map((item) => item.date).filter(Boolean)))];
 }
 
 function isWeekdayDate(dateText) {
@@ -666,7 +657,10 @@ function filteredRecords() {
 }
 
 function populateControls() {
-  const dates = tradingDates().sort().reverse();
+  const dates = selectableTradingDates().sort().reverse();
+  if (!dates.includes(state.selectedDate)) {
+    state.selectedDate = dates[0] || "";
+  }
   els.dateSelect.innerHTML = dates.map((date) => (
     `<option value="${escapeHtml(date)}">${escapeHtml(date)}</option>`
   )).join("");
@@ -1136,7 +1130,7 @@ async function init() {
     const response = await fetch("data/dashboard_data.json", { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     state.payload = await response.json();
-    state.selectedDate = latestTradingDateOnOrBefore(todayDateString());
+    state.selectedDate = latestSelectableTradingDate();
     populateControls();
     render();
   } catch (error) {
@@ -1148,7 +1142,8 @@ async function init() {
 }
 
 els.dateSelect.addEventListener("change", (event) => {
-  state.selectedDate = event.target.value;
+  const nextDate = event.target.value;
+  state.selectedDate = selectableTradingDates().includes(nextDate) ? nextDate : latestSelectableTradingDate();
   render();
 });
 
