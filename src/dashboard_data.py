@@ -22,6 +22,10 @@ DISPLAY_COLUMNS = [
     "daily_abs_change",
     "daily_pct_change",
     "direction",
+    "flow_change_type",
+    "flow_display_text",
+    "flow_direction",
+    "flow_severity_hint",
 ]
 
 GLOBAL_INDEX_SOURCE_SHEET = "权益-全球股指"
@@ -32,6 +36,8 @@ GLOBAL_INDEX_CHANGE_OFFSETS = {
 }
 GLOBAL_INDEX_YTD_METRIC = "2026年至今"
 GLOBAL_INDEX_YTD_BASE_DATE = pd.Timestamp("2026-01-05")
+FLOW_METRIC_KEYWORDS = ("净流入", "净流出", "净买入", "净卖出")
+FLOW_METRIC_NAMES = {"largeBillInflowMoney", "middleBillInflowMoney", "smallBillInflowMoney"}
 
 
 def _clean_text(value: Any) -> str:
@@ -61,6 +67,95 @@ def _json_value(value: Any) -> Any:
         except Exception:
             return value
     return value
+
+
+def _flow_direction(value: float) -> str:
+    if value > 0:
+        return "inflow"
+    if value < 0:
+        return "outflow"
+    return "neutral"
+
+
+def get_flow_change_status(current_value: float, previous_value: float) -> dict[str, Any]:
+    current = float(current_value)
+    previous = float(previous_value)
+    direction = _flow_direction(current)
+
+    if previous == 0:
+        if current > 0:
+            return {
+                "change_type": "zero_base",
+                "change_pct": None,
+                "display_text": "由零转为净流入",
+                "direction": direction,
+                "severity_hint": "positive",
+            }
+        if current < 0:
+            return {
+                "change_type": "zero_base",
+                "change_pct": None,
+                "display_text": "由零转为净流出",
+                "direction": direction,
+                "severity_hint": "negative",
+            }
+        return {
+            "change_type": "flat",
+            "change_pct": None,
+            "display_text": "持平",
+            "direction": direction,
+            "severity_hint": "neutral",
+        }
+
+    if previous < 0 < current:
+        return {
+            "change_type": "direction_switch",
+            "change_pct": None,
+            "display_text": "由净流出转为净流入",
+            "direction": direction,
+            "severity_hint": "positive",
+        }
+
+    if previous > 0 > current:
+        return {
+            "change_type": "direction_switch",
+            "change_pct": None,
+            "display_text": "由净流入转为净流出",
+            "direction": direction,
+            "severity_hint": "negative",
+        }
+
+    change_pct = ((current - previous) / abs(previous)) * 100
+    if current == previous:
+        severity = "neutral"
+        display_text = "持平"
+        change_type = "flat"
+    elif current < 0 and previous < 0:
+        is_outflow_expanding = abs(current) > abs(previous)
+        severity = "negative" if is_outflow_expanding else "positive"
+        display_text = "净流出扩大" if is_outflow_expanding else "净流出收窄"
+        change_type = "numeric_change"
+    else:
+        severity = "positive" if change_pct > 0 else "negative"
+        display_text = ""
+        change_type = "numeric_change"
+
+    return {
+        "change_type": change_type,
+        "change_pct": change_pct,
+        "display_text": display_text,
+        "direction": direction,
+        "severity_hint": severity,
+    }
+
+
+def _is_flow_metric(source_sheet: Any, metric_name: Any) -> bool:
+    metric = _clean_text(metric_name)
+    if metric in FLOW_METRIC_NAMES:
+        return True
+    if "inflowmoney" in metric.lower():
+        return True
+    return any(keyword in metric for keyword in FLOW_METRIC_KEYWORDS)
 
 
 def _to_record(row: pd.Series) -> dict[str, Any]:
@@ -138,6 +233,10 @@ def _build_series(df: pd.DataFrame) -> list[dict[str, Any]]:
                     "daily_abs_change": _json_value(row.get("daily_abs_change")),
                     "daily_pct_change": _json_value(row.get("daily_pct_change")),
                     "direction": _json_value(row.get("direction")),
+                    "flow_change_type": _json_value(row.get("flow_change_type")),
+                    "flow_display_text": _json_value(row.get("flow_display_text")),
+                    "flow_direction": _json_value(row.get("flow_direction")),
+                    "flow_severity_hint": _json_value(row.get("flow_severity_hint")),
                 }
             )
         item = {col: _json_value(first[col]) if col in first.index else None for col in identity_cols}
@@ -275,6 +374,21 @@ def build_daily_dashboard_frame(standardized_data: pd.DataFrame) -> pd.DataFrame
     df.loc[df["daily_abs_change"] > 0, "direction"] = "up"
     df.loc[df["daily_abs_change"] < 0, "direction"] = "down"
     df.loc[df["daily_abs_change"].isna(), "direction"] = "na"
+
+    flow_mask = df.apply(lambda row: _is_flow_metric(row.get("source_sheet"), row.get("metric_name")), axis=1)
+    df.loc[flow_mask, ["flow_change_type", "flow_display_text", "flow_direction", "flow_severity_hint"]] = ""
+    for idx, row in df[flow_mask].iterrows():
+        current_value = row.get("value")
+        previous_value = row.get("previous_value")
+        if pd.isna(current_value) or pd.isna(previous_value):
+            continue
+        status = get_flow_change_status(float(current_value), float(previous_value))
+        df.at[idx, "daily_pct_change"] = status["change_pct"]
+        df.at[idx, "flow_change_type"] = status["change_type"]
+        df.at[idx, "flow_display_text"] = status["display_text"]
+        df.at[idx, "flow_direction"] = status["direction"]
+        df.at[idx, "flow_severity_hint"] = status["severity_hint"]
+
     return df[DISPLAY_COLUMNS].reset_index(drop=True)
 
 

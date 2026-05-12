@@ -195,6 +195,10 @@ function isRetailFlowMetric(record) {
   ].includes(record.metric_name);
 }
 
+function hasFlowChangeStatus(record) {
+  return Boolean(record?.flow_change_type || record?.flow_display_text || record?.flow_direction || record?.flow_severity_hint);
+}
+
 function formatRetailFlowValue(value) {
   if (!isNumber(value)) return "--";
   return `${formatNumberFixed(value / 10000, 2)}亿元`;
@@ -228,6 +232,19 @@ function signedMark(value) {
   if (value > 0) return "▲";
   if (value < 0) return "▼";
   return "■";
+}
+
+function severityClass(record) {
+  if (record?.flow_severity_hint === "positive") return "up";
+  if (record?.flow_severity_hint === "negative") return "down";
+  if (record?.flow_severity_hint === "neutral") return "flat";
+  return signedClass(record?.daily_pct_change);
+}
+
+function severityMark(record) {
+  if (record?.flow_severity_hint === "positive") return "▲";
+  if (record?.flow_severity_hint === "negative") return "▼";
+  return signedMark(record?.daily_pct_change);
 }
 
 function labelClass(value) {
@@ -459,6 +476,10 @@ function getRecordsForDate(date) {
       daily_abs_change: observation.daily_abs_change,
       daily_pct_change: observation.daily_pct_change,
       direction: observation.direction,
+      flow_change_type: observation.flow_change_type,
+      flow_display_text: observation.flow_display_text,
+      flow_direction: observation.flow_direction,
+      flow_severity_hint: observation.flow_severity_hint,
     }];
   });
 }
@@ -698,7 +719,7 @@ function renderMovers(records) {
           <div class="mover-title">${rankBadge}<strong>${escapeHtml(title)}</strong></div>
           ${metricHtml}
         </div>
-        <div class="change ${signedClass(record.daily_pct_change)}">${signedMark(record.daily_pct_change)} ${formatPct(record.daily_pct_change)}</div>
+        <div class="change ${severityClass(record)}">${severityMark(record)} ${escapeHtml(formatDailyChangeText(record))}</div>
       </div>`;
     }).join("");
   };
@@ -716,6 +737,22 @@ function renderMovers(records) {
       </div>
       ${renderList(decliners, "暂无负向跌幅指标")}
     </div>`;
+}
+
+function formatDailyChangeText(record) {
+  if (!hasFlowChangeStatus(record)) {
+    return record?.ticker === "USDCNY.EX"
+      ? formatPctFixed(record.daily_pct_change, 2)
+      : formatPct(record.daily_pct_change);
+  }
+  const statusText = String(record.flow_display_text || "").trim();
+  if (isNumber(record.daily_pct_change)) {
+    const pctText = record?.ticker === "USDCNY.EX"
+      ? formatPctFixed(record.daily_pct_change, 2)
+      : formatPct(record.daily_pct_change);
+    return statusText ? `${statusText}（${pctText}）` : pctText;
+  }
+  return statusText || "--";
 }
 
 function renderTable(records) {
@@ -745,9 +782,7 @@ function renderTable(records) {
         : retailFlow
           ? formatRetailFlowChange(record.daily_abs_change)
           : formatSignedValueFixed(record.daily_abs_change, record.unit, 2);
-    const pctText = record?.ticker === "USDCNY.EX"
-      ? formatPctFixed(record.daily_pct_change, 2)
-      : formatPct(record.daily_pct_change);
+    const pctText = formatDailyChangeText(record);
     const metricText = splitMetricDetailText(record);
     const metricCell = metricText.note
       ? `<div class="metric-cell"><div class="metric-main">${escapeHtml(metricText.main)}</div><div class="metric-note">${escapeHtml(metricText.note)}</div></div>`
@@ -758,7 +793,7 @@ function renderTable(records) {
       <td>${metricCell}</td>
       <td class="numeric">${renderNumericHtml(valueText)}</td>
       <td class="numeric change ${signedClass(record.daily_abs_change)}">${renderNumericHtml(absChangeText)}</td>
-      <td class="numeric change ${signedClass(record.daily_pct_change)}">${renderNumericHtml(pctText)}</td>
+      <td class="numeric change ${severityClass(record)}">${renderNumericHtml(pctText)}</td>
     </tr>`;
   };
 
