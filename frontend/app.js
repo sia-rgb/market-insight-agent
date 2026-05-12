@@ -26,9 +26,9 @@ const metricLabels = {
   daily_position: "daily_position（期权全部合约总持仓量，反映市场中长期配置与对冲总需求）",
   "USDCNY.EX": "USDCNY.EX（美元兑人民币汇率）",
   "USDX.FX": "USDX.FX（美元对一篮子主要货币的加权平均汇率）",
-  smallBillInflowMoney: "smallBillInflowMoney（单笔成交4万元以下的净流入，代表散户）",
-  middleBillInflowMoney: "middleBillInflowMoney（单笔成交4~20万元的净流入，代表游资）",
-  largeBillInflowMoney: "largeBillInflowMoney（单笔成交20万元以上的净流入，代表机构）",
+  smallBillInflowMoney: "smallBillInflowMoney（单笔成交4万元以下的净流入）",
+  middleBillInflowMoney: "middleBillInflowMoney（单笔成交4–20万元的净流入）",
+  largeBillInflowMoney: "largeBillInflowMoney（单笔成交 20 万元以上的净流入）",
 };
 
 const globalIndexPerformanceConfig = {
