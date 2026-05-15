@@ -56,8 +56,8 @@ def search_market_news(query: str, recency_days: int) -> dict[str, Any]:
             "compact_context": "",
         }
 
-    tavily_key = get_env("TAVILY_API_KEY")
-    if not tavily_key:
+    serper_key = get_env("SERPER_API_KEY")
+    if not serper_key:
         return {
             "status": "error",
             "error_type": "missing_api_key",
@@ -66,17 +66,14 @@ def search_market_news(query: str, recency_days: int) -> dict[str, Any]:
             "compact_context": "",
         }
 
-    endpoint = get_env("TAVILY_SEARCH_ENDPOINT", "https://api.tavily.com/search")
-    timeout_sec = get_timeout_seconds("TAVILY_HTTP_TIMEOUT_SEC", 30.0)
+    endpoint = get_env("SERPER_SEARCH_ENDPOINT", "https://google.serper.dev/news")
+    timeout_sec = get_timeout_seconds("SERPER_HTTP_TIMEOUT_SEC", 30.0)
     payload = {
-        "api_key": tavily_key,
-        "query": q,
-        "search_depth": "basic",
-        "topic": "news",
-        "max_results": 5,
-        "days": days,
+        "q": q,
+        "num": 5,
+        "tbs": f"qdr:d{days}",
     }
-    headers = {"Content-Type": "application/json"}
+    headers = {"Content-Type": "application/json", "X-API-KEY": serper_key}
     try:
         resp = requests.post(endpoint, headers=headers, json=payload, timeout=timeout_sec)
         if resp.status_code >= 400:
@@ -91,7 +88,7 @@ def search_market_news(query: str, recency_days: int) -> dict[str, Any]:
             }
 
         body = resp.json()
-        results = body.get("results", [])
+        results = body.get("news") or body.get("organic") or []
         refs: list[dict[str, Any]] = []
         compact_parts: list[str] = []
         max_compact_len = 1600
@@ -99,15 +96,15 @@ def search_market_news(query: str, recency_days: int) -> dict[str, Any]:
             if not isinstance(item, dict):
                 continue
             title = _truncate_text(str(item.get("title", "")).strip(), 120)
-            url = _truncate_text(str(item.get("url", "")).strip(), 220)
-            content = _truncate_text(str(item.get("content", "")).strip(), 260)
+            url = _truncate_text(str(item.get("link", "") or item.get("url", "")).strip(), 220)
+            content = _truncate_text(str(item.get("snippet", "") or item.get("content", "")).strip(), 260)
             if not (title or url or content):
                 continue
             refs.append(
                 {
                     "source_url": url,
-                    "source_title": title or "Tavily Search Result",
-                    "publish_date": str(item.get("published_date", "")).strip(),
+                    "source_title": title or "Serper Search Result",
+                    "publish_date": str(item.get("date", "") or item.get("published_date", "")).strip(),
                     "retrieved_at": now,
                     "relevance_note": content,
                 }

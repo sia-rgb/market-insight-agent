@@ -90,7 +90,7 @@ def _build_insight_system_prompt() -> str:
         "你的任务是围绕‘变化方向、变化幅度、数据驱动力分析’三个要点生成审慎的异动洞察，必须严格区分事实与推断。"
         "输出必须是JSON对象，不得输出Markdown。"
         "输出字段要求："
-        'direction_summary(string, 用1-2句话说明本周变化方向，如上行/下行/震荡及其简要判断依据),'
+        'direction_summary(string, 用1-2句话说明当前时间窗口的变化方向，如上行/下行/震荡及其简要判断依据),'
         'magnitude_summary(string, 用1-2句话说明变化幅度在历史与同类资产中的位置),'
         'driver_analysis(string, 先基于内部数据说明异常本身，再结合外部检索得到的相关新闻报道、分析师观点、市场评论、政策/资金面/行业相关因素补充背景解释；外部信息只能作为背景线索或可能相关因素，不得表述为直接因果证据),'
         "driver_note(string)。"

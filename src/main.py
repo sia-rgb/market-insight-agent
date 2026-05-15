@@ -13,6 +13,7 @@ from .data_anomaly_detect import build_anomaly_candidates
 from .console_utf8 import setup_console_utf8
 from .data_ingest import build_standardized_market_data
 from .dashboard_data import build_dashboard_payload
+from .dashboard_agent_insights import build_dashboard_agent_insights_from_file
 from .agent_insight_generate import build_report_insights
 from .pipeline_contract import get_artifact_filenames, get_pipeline_step_names, load_pipeline_contract
 from .report_render import write_docx_report
@@ -166,6 +167,16 @@ def run_dashboard_data(args: argparse.Namespace) -> None:
     _ensure_parent(args.out)
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2, default=str)
+
+
+def run_agent_insights(args: argparse.Namespace) -> None:
+    build_dashboard_agent_insights_from_file(
+        dashboard_data_path=args.dashboard_data,
+        out_path=args.out,
+        top_n=args.top_n,
+        enable_external_search=args.enable_external_search,
+        target_date=args.target_date,
+    )
 
 
 def run_dashboard(args: argparse.Namespace) -> None:
@@ -367,6 +378,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_dashboard_data.add_argument("--latest-date", default=None)
     p_dashboard_data.add_argument("--top-n", type=int, default=10)
     p_dashboard_data.set_defaults(func=run_dashboard_data)
+
+    p_agent_insights = sub.add_parser("run_agent_insights")
+    p_agent_insights.add_argument("--dashboard-data", default="frontend/data/dashboard_data.json")
+    p_agent_insights.add_argument("--out", default="frontend/data/agent_insights.json")
+    p_agent_insights.add_argument("--top-n", type=int, default=5)
+    p_agent_insights.add_argument("--target-date", default=None)
+    p_agent_insights.add_argument("--enable-external-search", action=argparse.BooleanOptionalAction, default=True)
+    p_agent_insights.set_defaults(func=run_agent_insights)
 
     p_dashboard = sub.add_parser("run_dashboard")
     p_dashboard.add_argument("--input", required=True)

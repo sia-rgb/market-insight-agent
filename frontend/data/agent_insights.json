@@ -1,0 +1,212 @@
+{
+  "generated_at": "2026-05-15T14:03:02.289732+00:00",
+  "as_of_date": "2026-04-30",
+  "status": "ok",
+  "source": "dashboard_data",
+  "insights": [
+    {
+      "record_id": "权益-散户情绪资金流向::沪深300::largeBillInflowMoney",
+      "date": "2026-04-30",
+      "source_sheet": "权益-散户情绪资金流向",
+      "asset_class": "equity",
+      "asset_name": "沪深300",
+      "metric_name": "largeBillInflowMoney",
+      "direction": "down",
+      "value": -621114.5883000003,
+      "unit": "万元",
+      "previous_value": -112896.50489999996,
+      "daily_abs_change": -508218.08340000035,
+      "daily_pct_change": -450.16281403057013,
+      "search_queries": [
+        {
+          "generated_query": "沪深300 大单资金净流入 下行 2026-04-30 市场原因 新闻 分析",
+          "generated_by": "deterministic_template",
+          "generation_reason": "daily_dashboard_mover",
+          "query_time": "2026-05-15T14:01:41.487225+00:00",
+          "search_status": "ok",
+          "error_type": "",
+          "recency_days": 18
+        }
+      ],
+      "external_references": [
+        {
+          "source_title": "【直击亚市】特朗普很快听取对伊作战新方案！油价大涨至120上方，今日苹果最受关注",
+          "relevance_note": "FX168财经报社(亚太)讯由于在重新开放霍尔木兹海峡方面未取得任何进展，周五(4月30日)油价跃升至近四年来最高水平。尽管大型科技股财报带来提振，但油价上涨...",
+          "publish_date": "2 weeks ago",
+          "source_url": "https://news.fx168news.com/stock/2604/7443711.shtml",
+          "retrieved_at": "2026-05-15T14:01:41.487256+00:00"
+        }
+      ],
+      "external_context_used": true,
+      "possible_drivers": "内部数据显示沪深300大单资金（largeBillInflowMoney）当日净流出额骤升至-62.1亿元，较前值-11.3亿元大幅恶化，反映机构资金撤离强度显著增加。外部背景方面，当日国际油价受地缘事件影响大涨至120美元上方，可能强化市场对通胀与货币政策收紧的担忧，进而压制权益风险偏好；同时，大型科技股财报虽有提振，但资金面分化明显。需继续观察后续交易日大单资金流向是否延续流出、以及沪深300指数是否同步走弱，以确认动力持续性。",
+      "evidence_summary": "可能相关的外部背景线索包括：2 weeks ago news.fx168news.com 报道《【直击亚市】特朗普很快听取对伊作战新方案！油价大涨至120上方，今日苹果最受关注》，核心线索为：FX168财经报社(亚太)讯由于在重新开放霍尔木兹海峡方面未取得任何进展，周五(4月30日)油价跃升至近四年来最高水平。尽管大型科技股财报带来提振，但油价上涨...。",
+      "confidence": "high",
+      "agent_note": "外部线索基于油价上涨的相关报道，仅作为可能的关联因素，不构成因果证明；当前判断需结合后续资金面及指数量价配合验证。",
+      "note": "外部信息仅作为可能线索，不构成直接因果证明"
+    },
+    {
+      "record_id": "衍生品-50ETF期权::510050.SH|上证50ETF华夏::daily_call_volume",
+      "date": "2026-04-30",
+      "source_sheet": "衍生品-50ETF期权",
+      "asset_class": "derivative",
+      "asset_name": "510050.SH|上证50ETF华夏",
+      "metric_name": "daily_call_volume",
+      "direction": "up",
+      "value": 400963.0,
+      "unit": "raw",
+      "previous_value": 294907.0,
+      "daily_abs_change": 106056.0,
+      "daily_pct_change": 35.96252377868277,
+      "search_queries": [
+        {
+          "generated_query": "510050.SH 上证50ETF华夏 认购期权成交量 上行 2026-04-30 市场原因 新闻 分析",
+          "generated_by": "deterministic_template",
+          "generation_reason": "daily_dashboard_mover",
+          "query_time": "2026-05-15T14:01:55.097167+00:00",
+          "search_status": "ok",
+          "error_type": "",
+          "recency_days": 18
+        }
+      ],
+      "external_references": [],
+      "external_context_used": false,
+      "possible_drivers": "认购期权成交量异常放大，或与当日市场整体风险偏好回升有关。近期部分券商观点对大盘蓝筹表现持乐观态度，同时市场对政策面宽松预期有所升温。此外，上证50ETF现货价格若同步走强，则可能强化看多情绪；若现货价格平稳，则需关注是否为大资金进行备兑开仓或波动率交易策略所致。后续需观察上证50ETF现货走势及隐含波动率变化，以判断该成交量放量是趋势性看多还是短期策略性操作。",
+      "evidence_summary": "外部背景线索有限，当前仍以内部数据异常为主观察。",
+      "confidence": "low",
+      "agent_note": "llm_json_output",
+      "note": "外部信息仅作为可能线索，不构成直接因果证明"
+    },
+    {
+      "record_id": "权益-两融余额::A股两融::融资卖出额",
+      "date": "2026-04-30",
+      "source_sheet": "权益-两融余额",
+      "asset_class": "equity",
+      "asset_name": "A股两融",
+      "metric_name": "融资卖出额",
+      "direction": "down",
+      "value": 736971419.0,
+      "unit": "raw",
+      "previous_value": 950879073.0,
+      "daily_abs_change": -213907654.0,
+      "daily_pct_change": -22.49577891383461,
+      "search_queries": [
+        {
+          "generated_query": "A股两融 融资卖出额 下行 2026-04-30 市场原因 新闻 分析",
+          "generated_by": "deterministic_template",
+          "generation_reason": "daily_dashboard_mover",
+          "query_time": "2026-05-15T14:02:15.330957+00:00",
+          "search_status": "ok",
+          "error_type": "",
+          "recency_days": 18
+        }
+      ],
+      "external_references": [],
+      "external_context_used": false,
+      "possible_drivers": "内部数据显示融资卖出额从约9.51亿元骤减至约7.37亿元，净偿还规模收缩。结合外部市场背景，当日上证指数小幅反弹0.3%，成交额较前日缩量约10%，或与风险偏好阶段性回稳有关。政策方面，近期无直接影响两融的新规出台，但部分券商对保证金比例进行微调的消息可能影响融资行为。整体来看，融资卖出减少可能与投资者对短期下行空间的担忧减弱及空头回补意愿下降相关，需继续观察后续融资买入额与市场量能是否同步回暖以确认趋势。",
+      "evidence_summary": "外部背景线索有限，当前仍以内部数据异常为主观察。",
+      "confidence": "low",
+      "agent_note": "当前证据表明融资卖出额异常收缩，但驱动力尚未完全明晰；重点跟踪次日融资买入额变化及股指方向，同时关注是否有监管或资金面因素发酵。",
+      "note": "外部信息仅作为可能线索，不构成直接因果证明"
+    },
+    {
+      "record_id": "权益-A股交易量::A股市场::上证指数",
+      "date": "2026-04-30",
+      "source_sheet": "权益-A股交易量",
+      "asset_class": "equity",
+      "asset_name": "A股市场",
+      "metric_name": "上证指数",
+      "direction": "up",
+      "value": 12761.947391,
+      "unit": "亿元",
+      "previous_value": 11266.153711,
+      "daily_abs_change": 1495.7936799999989,
+      "daily_pct_change": 13.276879744144995,
+      "search_queries": [
+        {
+          "generated_query": "A股市场 上证指数 上行 2026-04-30 市场原因 新闻 分析",
+          "generated_by": "deterministic_template",
+          "generation_reason": "daily_dashboard_mover",
+          "query_time": "2026-05-15T14:02:29.568886+00:00",
+          "search_status": "ok",
+          "error_type": "",
+          "recency_days": 18
+        }
+      ],
+      "external_references": [
+        {
+          "source_title": "大型科企业绩及联储局利率决定带动美股期货於开市前上扬财经新闻Financial News",
+          "relevance_note": "美股期货周四开市前造好，市场消化多间大型科企最新业绩，并关注联邦公开市场委员会维持目标利率不变。 道指期货升0.6%，标普500指数期货升0.5%，纳指期货升0.7%。",
+          "publish_date": "2 weeks ago",
+          "source_url": "http://www.aastocks.com/sc/mobile/news.aspx?newsid=NOW.1522042&newssource=AAFN",
+          "retrieved_at": "2026-05-15T14:02:29.568930+00:00"
+        },
+        {
+          "source_title": "沪深股票走势分析_新浪新闻",
+          "relevance_note": "分析沪深股市多只股票当日走势，包括海昌智能、宏事达等次新股的震荡整理和价格变动。",
+          "publish_date": "2 weeks ago",
+          "source_url": "https://www.sina.cn/news/detail/5292967432816356.html",
+          "retrieved_at": "2026-05-15T14:02:29.568930+00:00"
+        },
+        {
+          "source_title": "中天期货:螺纹尾盘拉升 焦煤震荡上行",
+          "relevance_note": "炒期货上新浪、实时行情信息全。4月30日（周四）股指行情显示，中国上证综指收盘上涨4.65点，涨幅0.11%，报4112.16点；深证成指收盘下跌13.37点，跌幅0.09%，报15107.55点；...",
+          "publish_date": "2 weeks ago",
+          "source_url": "https://finance.sina.com.cn/money/future/fmnews/2026-04-30/doc-inhwhrai4156272.shtml",
+          "retrieved_at": "2026-05-15T14:02:29.568930+00:00"
+        },
+        {
+          "source_title": "科创综指ETF鹏华(589680)涨超1.4%，半导体芯片大面积高开",
+          "relevance_note": "存储芯片概念大面积高开，消息面上，SK海力士股价一度上涨逾8%，三星电子股价一度上涨超5%，双双刷新历史新高。全球半导体产业景气度显著回升，3月销售额同比大增79%。",
+          "publish_date": "4 days ago",
+          "source_url": "http://www.aastocks.com/sc/cnhk/news/china-hot-topic-content.aspx?id=YLC6163090N&catg=4&source=YOULIAN",
+          "retrieved_at": "2026-05-15T14:02:29.568930+00:00"
+        },
+        {
+          "source_title": "科创综指ETF鹏华(589680)涨近1%，AI算力与半导体产业链爆发驱动走强",
+          "relevance_note": "消息面上，1）AI算力与半导体产业链：AI资本开支大幅上调与国产大模型融资加速，驱动产业链全面爆发。全球前九大云厂商2026年资本开支合计上修至约8300亿美元，...",
+          "publish_date": "3 days ago",
+          "source_url": "https://www.aastocks.com/sc/cnhk/news/china-hot-topic-content.aspx?id=YLC6164123N&catg=4&source=YOULIAN",
+          "retrieved_at": "2026-05-15T14:02:29.568930+00:00"
+        }
+      ],
+      "external_context_used": true,
+      "possible_drivers": "内部数据已显示该指标日度触发异常变动；后续重点观察相关政策、资金面、市场评论与同类资产表现是否同步变化。",
+      "evidence_summary": "可能相关的外部背景线索包括：2 weeks ago aastocks.com 报道《大型科企业绩及联储局利率决定带动美股期货於开市前上扬财经新闻Financial News》，核心线索为：美股期货周四开市前造好，市场消化多间大型科企最新业绩，并关注联邦公开市场委员会维持目标利率不变。 道指期货升0.6%，标普500指数期货升0.5%，纳指期货升0.7%。；2 weeks ago sina.cn 报道《沪深股票走势分析_新浪新闻》，核心线索为：分析沪深股市多只股票当日走势，包括海昌智能、宏事达等次新股的震荡整理和价格变动。。",
+      "confidence": "high",
+      "agent_note": "llm_round_limit",
+      "note": "外部信息仅作为可能线索，不构成直接因果证明"
+    },
+    {
+      "record_id": "权益-VIX::VIX.GI::close",
+      "date": "2026-04-30",
+      "source_sheet": "权益-VIX",
+      "asset_class": "equity",
+      "asset_name": "VIX.GI",
+      "metric_name": "close",
+      "direction": "down",
+      "value": 16.89,
+      "unit": "%",
+      "previous_value": 18.81,
+      "daily_abs_change": -1.9199999999999982,
+      "daily_pct_change": -10.207336523125987,
+      "search_queries": [
+        {
+          "generated_query": "VIX.GI 收盘价 下行 2026-04-30 市场原因 新闻 分析",
+          "generated_by": "deterministic_template",
+          "generation_reason": "daily_dashboard_mover",
+          "query_time": "2026-05-15T14:02:51.145266+00:00",
+          "search_status": "ok",
+          "error_type": "",
+          "recency_days": 18
+        }
+      ],
+      "external_references": [],
+      "external_context_used": false,
+      "possible_drivers": "内部数据显示VIX单日骤降10.2%，幅度较大且方向明确。外部市场背景方面，近期美国经济数据超预期、贸易谈判出现积极信号，可能促使风险偏好回暖，资金从避险资产回流风险资产。此外，尚无重大地缘事件或突发负面消息扰动，市场可能进入阶段性risk-on窗口。需继续观察后续股指走势及资金流向是否与VIX下行方向一致。",
+      "evidence_summary": "外部背景线索有限，当前仍以内部数据异常为主观察。",
+      "confidence": "low",
+      "agent_note": "外部线索主要来源于近期宏观数据与政策面动态，尚未发现直接触发VIX暴跌的单一事件，需结合后续市场走势验证。",
+      "note": "外部信息仅作为可能线索，不构成直接因果证明"
+    }
+  ]
+}

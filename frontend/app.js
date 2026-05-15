@@ -1,5 +1,6 @@
 const state = {
   payload: null,
+  agentInsights: null,
   selectedDate: "",
   selectedClass: "all",
 };
@@ -48,6 +49,9 @@ const els = {
   vixCanvas: document.querySelector("#vixCanvas"),
   treasuryCanvas: document.querySelector("#treasuryCanvas"),
   moverList: document.querySelector("#moverList"),
+  agentInsightPanel: document.querySelector("#agentInsightPanel"),
+  agentInsightList: document.querySelector("#agentInsightList"),
+  agentInsightMeta: document.querySelector("#agentInsightMeta"),
   detailRows: document.querySelector("#detailRows"),
   exportLongImage: document.querySelector("#exportLongImage"),
 };
@@ -728,6 +732,47 @@ function renderMovers(records) {
     </div>`;
 }
 
+function renderAgentInsights() {
+  const payload = state.agentInsights;
+  const insights = Array.isArray(payload?.insights) ? payload.insights : [];
+  const asOfDate = String(payload?.as_of_date || "").trim();
+  const selectedDate = effectiveCloseDate();
+  if (!payload || !insights.length || (asOfDate && asOfDate !== selectedDate)) {
+    els.agentInsightPanel.hidden = true;
+    els.agentInsightList.innerHTML = "";
+    els.agentInsightMeta.textContent = "";
+    return;
+  }
+
+  els.agentInsightPanel.hidden = false;
+  els.agentInsightMeta.textContent = `Agent 生成日期：${asOfDate || selectedDate}，外部线索仅作为可能解释`;
+  els.agentInsightList.innerHTML = insights.slice(0, 5).map((item) => {
+    const pctText = formatPct(item.daily_pct_change);
+    const confidence = String(item.confidence || "low").toLowerCase();
+    const metricText = labelMetricBrief(item.metric_name);
+    const refs = Array.isArray(item.external_references) ? item.external_references : [];
+    const refHtml = refs.slice(0, 2).map((ref) => {
+      const title = ref.source_title || ref.source_url || "外部线索";
+      const url = String(ref.source_url || "").trim();
+      if (!url) return `<span>${escapeHtml(title)}</span>`;
+      return `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(title)}</a>`;
+    }).join("");
+    return `<article class="agent-insight-card">
+      <div class="agent-insight-top">
+        <div>
+          <strong>${escapeHtml(item.asset_name || "")}</strong>
+          <span>${escapeHtml(metricText || item.metric_name || "")}</span>
+        </div>
+        <div class="agent-confidence confidence-${escapeHtml(confidence)}">${escapeHtml(confidence.toUpperCase())}</div>
+      </div>
+      <div class="agent-move change ${directionClass(item)}">${directionMark(item)} ${escapeHtml(pctText)}</div>
+      <p>${escapeHtml(item.possible_drivers || "")}</p>
+      <div class="agent-evidence">${escapeHtml(item.evidence_summary || item.note || "")}</div>
+      ${refHtml ? `<div class="agent-refs">${refHtml}</div>` : ""}
+    </article>`;
+  }).join("");
+}
+
 function formatDailyChangeText(record) {
   if (!hasFlowChangeStatus(record)) {
     return record?.ticker === "USDCNY.EX"
@@ -1091,6 +1136,7 @@ function render() {
   drawVixChart();
   drawTreasuryChart();
   renderMovers(records);
+  renderAgentInsights();
   renderTable(records);
 }
 
@@ -1130,7 +1176,16 @@ async function init() {
     const response = await fetch("data/dashboard_data.json", { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     state.payload = await response.json();
-    state.selectedDate = latestSelectableTradingDate();
+    try {
+      const agentResponse = await fetch("data/agent_insights.json", { cache: "no-store" });
+      state.agentInsights = agentResponse.ok ? await agentResponse.json() : null;
+    } catch (error) {
+      state.agentInsights = null;
+    }
+    const agentDate = String(state.agentInsights?.as_of_date || "").trim();
+    state.selectedDate = selectableTradingDates().includes(agentDate)
+      ? agentDate
+      : latestSelectableTradingDate();
     populateControls();
     render();
   } catch (error) {

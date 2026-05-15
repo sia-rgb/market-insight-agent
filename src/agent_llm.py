@@ -50,6 +50,8 @@ def _default_insight_output(
     context: dict[str, Any], refs: list[dict[str, Any]]
 ) -> dict[str, Any]:
     asset_fact = context.get("asset_fact") or {}
+    time_window = context.get("time_window") or {}
+    period_label = str(time_window.get("period_label", "")).strip() or "本周"
     asset_name = str(asset_fact.get("asset_name", "")).strip()
     metric_name = str(asset_fact.get("metric_name", "")).strip()
     direction = str(asset_fact.get("direction", "")).strip()
@@ -66,20 +68,20 @@ def _default_insight_output(
 
     if pct_change is not None:
         sign = "+" if pct_change >= 0 else ""
-        magnitude_text = f"周度变动 {sign}{pct_change:.2f}%，处于历史与横向分位的高位区间。"
+        magnitude_text = f"{period_label}变动 {sign}{pct_change:.2f}%，处于历史与横向分位的高位区间。"
     elif abs_change is not None:
         sign = "+" if abs_change >= 0 else ""
         unit_suffix = f" {unit}" if unit and unit.lower() != "raw" else ""
-        magnitude_text = f"周度变动 {sign}{abs_change:.4f}{unit_suffix}，处于历史与横向分位的高位区间。"
+        magnitude_text = f"{period_label}变动 {sign}{abs_change:.4f}{unit_suffix}，处于历史与横向分位的高位区间。"
     else:
         magnitude_text = "变化幅度信息暂缺。"
 
     driver_evidence = build_driver_evidence(refs, evidence_type="fallback")
 
     return {
-        "direction_summary": f"{asset_name} {metric_name} 本周呈{direction_text}态势。",
+        "direction_summary": f"{asset_name} {metric_name} {period_label}呈{direction_text}态势。",
         "magnitude_summary": magnitude_text,
-        "driver_analysis": "内部数据已显示该指标本周触发异常变动；后续重点观察相关政策、资金面、市场评论与同类资产表现是否同步变化。",
+        "driver_analysis": f"内部数据已显示该指标{period_label}触发异常变动；后续重点观察相关政策、资金面、市场评论与同类资产表现是否同步变化。",
         "driver_note": "fallback",
         "external_references": normalize_refs(refs),
         "driver_evidence": driver_evidence,
