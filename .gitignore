@@ -42,9 +42,9 @@ logs/
 notes/
 outputs/
 artifacts/
+assets/
 tests/
 templates/
-market-data-auto.xlsx
 
 
 # Temporary files
