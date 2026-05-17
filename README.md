@@ -1,4 +1,6 @@
 
+![Assets Insight Agent](assets/banner.png)
+
 ## 1. 项目概览 (Project Overview)
 
 **目标**：构建一个以 Agent 异常分析为核心的日度市场数据洞察看板。系统基于每日更新的多资产市场数据，先由 Data 层提供标准化、不可篡改的日度事实底座，再由 Agent 层识别重点异常、生成审慎解释并补充外部线索，最终通过前端看板展示分析结果，并支持导出长图用于汇报与复盘。
@@ -155,3 +157,5 @@ Agent 当前从 `dashboard_data.json` 中读取日度变化和榜单数据，优
 
 ### 5) Legacy 周度异常规则
 历史阈值、Fallback 固定阈值、Robust Z-Score、横向排名和分位类规则仍保留在 legacy 周度命令中，仅在显式调用 `run_weekly_calc`、`run_anomaly_detect`、`run_insight_generate`、`run_render_report` 时使用，不属于当前默认主线。
+
+![输出展示](assets/示意图.png)
